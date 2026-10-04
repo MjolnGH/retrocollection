@@ -16,31 +16,60 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'retro-collection-tracker';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : (localStorage.getItem('retroTracker_app_id') || 'retro-collection-tracker');
 
-        if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
+        function initFirebaseSystem(config) {
+            if (!config) return false;
+            try {
+                const app = initializeApp(config);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
 
-            window.CloudSync = {
-                appId,
-                auth,
-                db,
-                doc,
-                setDoc,
-                getDoc,
-                collection,
-                onSnapshot,
-                signInAnonymously,
-                signInWithCustomToken,
-                onAuthStateChanged,
-                GoogleAuthProvider,
-                signInWithPopup,
-                signOut
-            };
+                window.CloudSync = {
+                    appId,
+                    auth,
+                    db,
+                    doc,
+                    setDoc,
+                    getDoc,
+                    collection,
+                    onSnapshot,
+                    signInAnonymously,
+                    signInWithCustomToken,
+                    onAuthStateChanged,
+                    GoogleAuthProvider,
+                    signInWithPopup,
+                    signOut,
+                    isCustomConfig: typeof __firebase_config === 'undefined'
+                };
+                if (typeof window.onCloudSyncReady === 'function') {
+                    window.onCloudSyncReady();
+                }
+                return true;
+            } catch (err) {
+                console.error("Erreur d'initialisation Firebase:", err);
+                return false;
+            }
         }
+
+        window.setupFirebaseConfig = function(configObj, customAppId) {
+            if (customAppId) {
+                localStorage.setItem('retroTracker_app_id', customAppId);
+            }
+            localStorage.setItem('retroTracker_firebase_config', JSON.stringify(configObj));
+            return initFirebaseSystem(configObj);
+        };
+
+        window.removeFirebaseConfig = function() {
+            localStorage.removeItem('retroTracker_firebase_config');
+            localStorage.removeItem('retroTracker_app_id');
+            delete window.CloudSync;
+        };
+
+        const embeddedConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const storedConfig = !embeddedConfig && localStorage.getItem('retroTracker_firebase_config') ? JSON.parse(localStorage.getItem('retroTracker_firebase_config')) : null;
+
+        initFirebaseSystem(embeddedConfig || storedConfig);
     </script>
 
     <style>
@@ -772,6 +801,7 @@
             });
 
             const [isCloudConnected, setIsCloudConnected] = React.useState(false);
+            const [hasFirebaseConfig, setHasFirebaseConfig] = React.useState(() => !!window.CloudSync);
             const [userId, setUserId] = React.useState(null);
             const [userEmail, setUserEmail] = React.useState(null);
             const [syncStatus, setSyncStatus] = React.useState('idle'); // 'idle' | 'syncing' | 'saved' | 'error'
@@ -781,29 +811,17 @@
             const [syncCode, setSyncCode] = React.useState(() => localStorage.getItem('retroTrackerSyncCode') || null);
             const [inputSyncCode, setInputSyncCode] = React.useState("");
             
-            // Nouveaux états pour le partage par URL & Code Texte
+            // Nouveaux états pour le partage par URL, Code Texte & Firebase GitHub
             const [copiedMessage, setCopiedMessage] = React.useState(null);
             const [textCodeInput, setTextCodeInput] = React.useState("");
+            const [customFbInput, setCustomFbInput] = React.useState("");
+            const [fbConfigError, setFbConfigError] = React.useState(null);
+            const [showFbSettings, setShowFbSettings] = React.useState(false);
 
-            // Détection automatique d'une collection dans l'URL (#data=...)
             React.useEffect(() => {
-                try {
-                    const hash = window.location.hash;
-                    if (hash && hash.startsWith('#data=')) {
-                        const encodedData = hash.replace('#data=', '');
-                        const jsonString = decodeURIComponent(atob(encodedData));
-                        const importedGames = JSON.parse(jsonString);
-                        if (Array.isArray(importedGames) && importedGames.length > 0) {
-                            if (window.confirm(`Une collection de ${importedGames.length} jeux a été détectée dans ce lien ! Voulez-vous l'importer ?`)) {
-                                setGames(importedGames);
-                                localStorage.setItem('retroTrackerData', JSON.stringify(importedGames));
-                                window.history.replaceState(null, null, ' ');
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error("Erreur de décodage de l'URL:", e);
-                }
+                window.onCloudSyncReady = () => {
+                    setHasFirebaseConfig(true);
+                };
             }, []);
 
             // Initialisation et écoute de la base de données Cloud
@@ -814,6 +832,7 @@
                 async function initCloud() {
                     if (!window.CloudSync) {
                         console.log("Mode local uniquement (Configuration Cloud non détectée)");
+                        setIsCloudConnected(false);
                         return;
                     }
                     const { auth, signInWithCustomToken, signInAnonymously, db, doc, setDoc, onSnapshot, onAuthStateChanged, appId } = window.CloudSync;
@@ -874,8 +893,7 @@
                     if (unsubscribeDoc) unsubscribeDoc();
                     if (unsubscribeAuth) unsubscribeAuth();
                 };
-            }, [syncCode]);
-
+            }, [syncCode, hasFirebaseConfig]);
             const handleGoogleSignIn = async () => {
                 if (!window.CloudSync) return;
                 const { auth, GoogleAuthProvider, signInWithPopup } = window.CloudSync;
@@ -913,6 +931,46 @@
             const handleDisableSyncCode = () => {
                 localStorage.removeItem('retroTrackerSyncCode');
                 setSyncCode(null);
+            };
+
+            const handleSaveCustomFirebase = (e) => {
+                e.preventDefault();
+                setFbConfigError(null);
+                try {
+                    const cleanInput = customFbInput.trim();
+                    let parsed;
+                    if (cleanInput.startsWith('{')) {
+                        parsed = JSON.parse(cleanInput);
+                    } else {
+                        throw new Error("Veuillez coller un objet JSON Firebase valide {\"apiKey\": ...}");
+                    }
+
+                    if (!parsed.apiKey || !parsed.projectId) {
+                        throw new Error("Le JSON doit contenir au moins 'apiKey' et 'projectId'.");
+                    }
+
+                    const ok = window.setupFirebaseConfig(parsed);
+                    if (ok) {
+                        setHasFirebaseConfig(true);
+                        setShowFbSettings(false);
+                        setCustomFbInput("");
+                        setCopiedMessage("Configuration Firebase enregistrée ! La synchro Code PIN est désormais active.");
+                        setTimeout(() => setCopiedMessage(null), 4000);
+                    } else {
+                        setFbConfigError("Échec de l'initialisation de Firebase avec cette configuration.");
+                    }
+                } catch (err) {
+                    setFbConfigError(err.message || "Erreur de format du JSON.");
+                }
+            };
+
+            const handleResetCustomFirebase = () => {
+                if (window.confirm("Supprimer la configuration Firebase personnalisée ? La synchro Cloud sera désactivée.")) {
+                    window.removeFirebaseConfig();
+                    setHasFirebaseConfig(false);
+                    setIsCloudConnected(false);
+                    setShowFbSettings(false);
+                }
             };
 
             // ---- Fonctions de Partage par Lien & Code Texte ----
@@ -1296,6 +1354,80 @@
                                 )}
 
                                 <div className="space-y-5">
+                                    {/* Section Configuration Firebase (Hébergement GitHub / Externe) */}
+                                    {(!hasFirebaseConfig || showFbSettings) && (
+                                        <div className="bg-amber-950/80 border border-amber-500/80 p-4 rounded-lg">
+                                            <h4 className="font-pixel text-xs text-amber-300 mb-2 flex items-center gap-2">
+                                                <i className="fas fa-server text-yellow-400"></i>
+                                                <span>Configuration Firebase (Activer Code PIN sur GitHub)</span>
+                                            </h4>
+                                            <p className="font-terminal text-lg text-amber-100 mb-3 leading-snug">
+                                                Sur Gemini Share, la base de données est fournie automatiquement. Sur <strong>GitHub Pages</strong>, collez une fois la configuration Firebase de votre projet (création gratuite sur <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-pink-400">Firebase Console</a>) :
+                                            </p>
+                                            
+                                            {fbConfigError && (
+                                                <div className="mb-3 p-2 bg-red-900/80 border border-red-500 text-red-200 text-base font-terminal rounded">
+                                                    {fbConfigError}
+                                                </div>
+                                            )}
+
+                                            <form onSubmit={handleSaveCustomFirebase} className="space-y-3">
+                                                <textarea 
+                                                    rows="4" 
+                                                    placeholder='{"apiKey": "AIzaSy...", "authDomain": "...firebaseapp.com", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}'
+                                                    value={customFbInput}
+                                                    onChange={(e) => setCustomFbInput(e.target.value)}
+                                                    className="w-full bg-black border border-amber-500/60 text-amber-200 p-2 font-mono text-xs rounded focus:outline-none focus:border-pink-500"
+                                                ></textarea>
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        type="submit" 
+                                                        className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-pixel text-[9px] py-2.5 px-3 rounded uppercase"
+                                                    >
+                                                        Enregistrer & Activer
+                                                    </button>
+                                                    {hasFirebaseConfig && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setShowFbSettings(false)}
+                                                            className="bg-gray-700 hover:bg-gray-600 text-white font-pixel text-[9px] py-2.5 px-3 rounded uppercase"
+                                                        >
+                                                            Annuler
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </form>
+
+                                            <div className="mt-3 pt-3 border-t border-amber-800/60 text-xs text-amber-200/80">
+                                                <i className="fas fa-lightbulb text-yellow-400 mr-1"></i>
+                                                <span>Note : Le <strong>Lien Magique</strong> et le <strong>Code Texte</strong> ci-dessous fonctionnent sur GitHub sans aucune configuration Firebase !</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {hasFirebaseConfig && window.CloudSync && window.CloudSync.isCustomConfig && !showFbSettings && (
+                                        <div className="flex justify-between items-center bg-gray-800/60 p-2 rounded border border-amber-500/40">
+                                            <span className="text-amber-300 font-terminal text-lg">
+                                                <i className="fas fa-check-circle text-green-400 mr-1"></i>
+                                                Firebase Configuré (GitHub)
+                                            </span>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => setShowFbSettings(true)}
+                                                    className="text-xs bg-amber-900/60 hover:bg-amber-800 text-amber-200 px-2 py-1 rounded font-pixel"
+                                                >
+                                                    Modifier
+                                                </button>
+                                                <button 
+                                                    onClick={handleResetCustomFirebase}
+                                                    className="text-xs bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-pixel"
+                                                >
+                                                    Supprimer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* METHODE 1 : Lien Magique (100% garanti) */}
                                     <div className="bg-gray-800/90 border border-purple-500/60 p-4 rounded-lg">
                                         <h4 className="font-pixel text-xs text-purple-300 mb-2 flex items-center gap-2">
