@@ -102,10 +102,11 @@
     
     <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Import des fonctions de Google Auth
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuration Firebase (Issue de ta console)
+        // Configuration Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCBHyJXxnUojeZus5cBQog5tDuInK6dSfU",
             authDomain: "retrocollec-db.firebaseapp.com",
@@ -118,7 +119,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const APP_ID = "retrocollec-online-v1"; // Identifiant pour structurer la base de données
+        const provider = new GoogleAuthProvider(); // Initialisation du fournisseur Google
+        const APP_ID = "retrocollec-online-v1";
 
         const CONSOLES = ["Toutes", "Megadrive", "Super Famicom", "Master System"];
 
@@ -294,7 +296,6 @@
         };
 
         const App = () => {
-            // État des jeux
             const [games, setGames] = React.useState(() => {
                 const savedGames = localStorage.getItem('retroTrackerData');
                 if (savedGames) {
@@ -304,20 +305,11 @@
                 return initialGames;
             });
 
-            // États Firebase & Synchro
-            const [isCloudConnected, setIsCloudConnected] = React.useState(false);
-            const [userId, setUserId] = React.useState(null);
+            // États Firebase (Simplifiés avec Google Auth)
+            const [currentUser, setCurrentUser] = React.useState(null);
             const [syncStatus, setSyncStatus] = React.useState('idle'); 
-            const [showAuthModal, setShowAuthModal] = React.useState(false);
             const [authError, setAuthError] = React.useState(null);
-            
-            const [syncCode, setSyncCode] = React.useState(() => localStorage.getItem('retroTrackerSyncCode') || null);
-            const [inputSyncCode, setInputSyncCode] = React.useState("");
-            
-            const [copiedMessage, setCopiedMessage] = React.useState(null);
-            const [textCodeInput, setTextCodeInput] = React.useState("");
 
-            // État Boite de dialogue personnalisée
             const [dialogState, setDialogState] = React.useState({ isOpen: false, type: 'alert', message: '', onConfirm: null, onCancel: null });
 
             const showAlert = (message) => {
@@ -337,41 +329,9 @@
                 });
             };
 
-            React.useEffect(() => {
-                try {
-                    const hash = window.location.hash;
-                    if (hash && hash.startsWith('#data=')) {
-                        const encodedData = hash.replace('#data=', '');
-                        const jsonString = decodeURIComponent(atob(encodedData));
-                        const importedGames = JSON.parse(jsonString);
-                        if (Array.isArray(importedGames) && importedGames.length > 0) {
-                            showConfirm(`Une collection de ${importedGames.length} jeux a été détectée dans ce lien !\n\nVoulez-vous l'importer et écraser la vôtre ?`, () => {
-                                setGames(importedGames);
-                                localStorage.setItem('retroTrackerData', JSON.stringify(importedGames));
-                                window.history.replaceState(null, null, ' ');
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.error("Erreur de décodage de l'URL:", e);
-                }
-            }, []);
-
+            // Écouteur de connexion Firebase
             React.useEffect(() => {
                 let unsubscribeDoc = null;
-                
-                const initCloud = async () => {
-                    try {
-                        await signInAnonymously(auth);
-                        setIsCloudConnected(true);
-                        setAuthError(null);
-                    } catch (err) {
-                        console.warn("Erreur auto-login anonyme:", err);
-                        setAuthError("Erreur d'authentification Firebase. Vérifiez la configuration.");
-                    }
-                };
-
-                initCloud();
 
                 const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
                     if (unsubscribeDoc) {
@@ -380,11 +340,12 @@
                     }
 
                     if (user) {
-                        setUserId(user.uid);
-                        // Choix du chemin selon si on utilise un code de partage (public) ou un profil personnel
-                        const docRef = syncCode 
-                            ? doc(db, 'artifacts', APP_ID, 'public', 'data', syncCode) 
-                            : doc(db, 'artifacts', APP_ID, 'users', user.uid, 'gamesCollection');
+                        // Utilisateur connecté
+                        setCurrentUser(user);
+                        setAuthError(null);
+                        
+                        // On écoute SA collection privée sécurisée
+                        const docRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'gamesCollection');
 
                         unsubscribeDoc = onSnapshot(docRef, (docSnap) => {
                             if (docSnap.exists()) {
@@ -396,17 +357,23 @@
                                     setTimeout(() => setSyncStatus('idle'), 2000);
                                 }
                             } else {
-                                // Première connexion ou nouveau code: On sauvegarde la collection locale actuelle sur le cloud
+                                // Premier login : on pousse la liste locale vers le Cloud
                                 const currentGames = JSON.parse(localStorage.getItem('retroTrackerData')) || games;
                                 setDoc(docRef, { games: currentGames, lastUpdated: Date.now() }).catch(err => {
                                      console.error("Erreur d'écriture initiale:", err);
-                                     setAuthError("Erreur d'écriture Firebase. Vérifiez les règles Firestore.");
+                                     setAuthError("Erreur d'écriture Firebase. Vérifiez vos règles de sécurité Firestore.");
                                 });
                             }
                         }, (error) => {
                             console.error("Erreur d'écoute Cloud:", error);
                             setSyncStatus('error');
+                            if(error.code === 'permission-denied') {
+                                setAuthError("Accès refusé. Avez-vous mis à jour les règles Firestore ?");
+                            }
                         });
+                    } else {
+                        // Déconnecté (Mode local)
+                        setCurrentUser(null);
                     }
                 });
 
@@ -414,17 +381,38 @@
                     if (unsubscribeDoc) unsubscribeDoc();
                     if (unsubscribeAuth) unsubscribeAuth();
                 };
-            }, [syncCode]);
+            }, []);
+
+            // Fonction pour se connecter avec Google
+            const handleLogin = async () => {
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error("Erreur de connexion:", error);
+                    // L'erreur "popup-closed-by-user" est normale si on annule
+                    if (error.code !== 'auth/popup-closed-by-user') {
+                        setAuthError(`Erreur de connexion: ${error.message}`);
+                    }
+                }
+            };
+
+            // Fonction pour se déconnecter
+            const handleLogout = async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Erreur déconnexion:", error);
+                }
+            };
 
             const saveGamesData = (updatedGames) => {
                 setGames(updatedGames);
-                localStorage.setItem('retroTrackerData', JSON.stringify(updatedGames));
+                localStorage.setItem('retroTrackerData', JSON.stringify(updatedGames)); // Sauvegarde locale (Hors ligne)
 
-                if (userId || syncCode) {
+                if (currentUser) {
+                    // Sauvegarde dans le Cloud (si connecté)
                     setSyncStatus('syncing');
-                    const docRef = syncCode
-                        ? doc(db, 'artifacts', APP_ID, 'public', 'data', syncCode)
-                        : doc(db, 'artifacts', APP_ID, 'users', userId, 'gamesCollection');
+                    const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'gamesCollection');
 
                     setDoc(docRef, { games: updatedGames, lastUpdated: Date.now() })
                         .then(() => {
@@ -435,82 +423,6 @@
                             console.error("Erreur de sauvegarde Cloud:", err);
                             setSyncStatus('error');
                         });
-                }
-            };
-
-            const handleEnableSyncCode = (e) => {
-                e.preventDefault();
-                const cleanCode = inputSyncCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (!cleanCode) return;
-                localStorage.setItem('retroTrackerSyncCode', cleanCode);
-                setSyncCode(cleanCode);
-                setInputSyncCode("");
-                setShowAuthModal(false);
-            };
-
-            const handleDisableSyncCode = () => {
-                localStorage.removeItem('retroTrackerSyncCode');
-                setSyncCode(null);
-            };
-
-            const generateShareableLink = () => {
-                try {
-                    const jsonString = JSON.stringify(games);
-                    const encodedData = btoa(encodeURIComponent(jsonString));
-                    const baseUrl = window.location.href.split('#')[0];
-                    const fullUrl = `${baseUrl}#data=${encodedData}`;
-                    
-                    const tempInput = document.createElement('input');
-                    tempInput.value = fullUrl;
-                    document.body.appendChild(tempInput);
-                    tempInput.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(tempInput);
-
-                    setCopiedMessage("Lien magique copié dans le presse-papier !");
-                    setTimeout(() => setCopiedMessage(null), 4000);
-                } catch (err) {
-                    showAlert("Erreur lors de la génération du lien : La collection est peut-être très volumineuse.");
-                }
-            };
-
-            const generateTextCode = () => {
-                try {
-                    const jsonString = JSON.stringify(games);
-                    const encodedData = btoa(encodeURIComponent(jsonString));
-                    
-                    const tempInput = document.createElement('textarea');
-                    tempInput.value = encodedData;
-                    document.body.appendChild(tempInput);
-                    tempInput.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(tempInput);
-
-                    setCopiedMessage("Code Texte copié !");
-                    setTimeout(() => setCopiedMessage(null), 4000);
-                } catch (err) {
-                    showAlert("Erreur lors de la génération du code.");
-                }
-            };
-
-            const handleImportTextCode = (e) => {
-                e.preventDefault();
-                if (!textCodeInput.trim()) return;
-                try {
-                    const jsonString = decodeURIComponent(atob(textCodeInput.trim()));
-                    const importedGames = JSON.parse(jsonString);
-                    if (Array.isArray(importedGames)) {
-                        showConfirm(`Remplacer votre liste par ces ${importedGames.length} jeux ?`, () => {
-                            saveGamesData(importedGames);
-                            setTextCodeInput("");
-                            setShowAuthModal(false);
-                            showAlert("Collection importée avec succès !");
-                        });
-                    } else {
-                        showAlert("Code invalide.");
-                    }
-                } catch (err) {
-                    showAlert("Format de code invalide.");
                 }
             };
 
@@ -642,113 +554,41 @@
                             <h1 className="font-pixel text-2xl sm:text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 font-bold mb-2">
                                 RETROCOLLEC ONLINE
                             </h1>
-                            <p className="text-gray-400 text-lg sm:text-xl">Gestionnaire de Collection Retrogaming</p>
+                            <p className="text-gray-400 text-lg sm:text-xl">Gestionnaire de Collection Sécurisé</p>
                         </div>
 
-                        <div className="inline-flex flex-wrap items-center justify-center gap-3 bg-gray-900/90 border border-purple-500/50 px-4 py-2 rounded-2xl text-xs font-pixel shadow-lg">
+                        <div className="inline-flex flex-col sm:flex-row items-center gap-3 bg-gray-900/90 border border-purple-500/50 px-4 py-2 rounded-2xl text-xs font-pixel shadow-lg">
                             <div className="flex items-center gap-2">
-                                {isCloudConnected ? (
+                                {currentUser ? (
                                     <>
                                         <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
-                                        <span className="text-green-300">CLOUD OK</span>
+                                        <span className="text-green-300">CLOUD</span>
                                         {syncStatus === 'syncing' && <span className="text-yellow-400 text-[9px] ml-1">(Envoi...)</span>}
                                         {syncStatus === 'saved' && <span className="text-blue-300 text-[9px] ml-1">(✓)</span>}
+                                        <div className="h-4 w-px bg-purple-500/40 mx-2 hidden sm:block"></div>
+                                        <span className="text-blue-200 lowercase truncate max-w-[150px]" title={currentUser.email}>{currentUser.displayName || currentUser.email}</span>
+                                        <button onClick={handleLogout} className="ml-2 bg-gray-700 hover:bg-red-600 text-white p-1.5 rounded-full transition-colors" title="Se déconnecter">
+                                            <i className="fas fa-sign-out-alt"></i>
+                                        </button>
                                     </>
                                 ) : (
                                     <>
                                         <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                                        <span className="text-yellow-300">LOCAL</span>
+                                        <span className="text-yellow-300">LOCAL (Hors ligne)</span>
+                                        <div className="h-4 w-px bg-purple-500/40 mx-2 hidden sm:block"></div>
+                                        <button onClick={handleLogin} className="bg-white hover:bg-gray-200 text-gray-900 font-sans font-bold text-[10px] px-3 py-1.5 rounded-full flex items-center gap-2 transition-colors">
+                                            <i className="fab fa-google text-red-500 text-sm"></i>
+                                            <span>Connexion</span>
+                                        </button>
                                     </>
                                 )}
                             </div>
-
-                            <div className="h-4 w-px bg-purple-500/40 hidden sm:block"></div>
-
-                            <button 
-                                onClick={() => setShowAuthModal(true)}
-                                className="bg-pink-600/90 hover:bg-pink-500 text-white text-[9px] px-3 py-1 rounded-xl flex items-center gap-2 transition-colors"
-                            >
-                                <i className="fas fa-mobile-alt"></i>
-                                <span>{syncCode ? `Code Actif: ${syncCode.toUpperCase()}` : 'Partager / Synchro'}</span>
-                            </button>
                         </div>
                     </header>
 
-                    {showAuthModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-                            <div className="bg-gray-900 border-2 border-pink-500 p-6 rounded-lg max-w-lg w-full shadow-[0_0_30px_rgba(236,72,153,0.4)] relative max-h-[90vh] overflow-y-auto custom-scrollbar-mini">
-                                <button onClick={() => setShowAuthModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl">
-                                    <i className="fas fa-times"></i>
-                                </button>
-
-                                <div className="text-center mb-6">
-                                    <div className="w-12 h-12 rounded-full bg-pink-500/20 border border-pink-500 flex items-center justify-center mx-auto mb-3 text-pink-400 text-2xl">
-                                        <i className="fas fa-share-alt"></i>
-                                    </div>
-                                    <h3 className="font-pixel text-lg text-white mb-2">Accéder à ma collection partout</h3>
-                                    <p className="font-terminal text-xl text-gray-300">Choisissez la méthode la plus pratique :</p>
-                                </div>
-
-                                {copiedMessage && (
-                                    <div className="mb-6 p-3 bg-green-950/90 border border-green-500 rounded text-green-200 font-terminal text-lg text-center animate-bounce">
-                                        <i className="fas fa-check-circle mr-2 text-green-400"></i> {copiedMessage}
-                                    </div>
-                                )}
-
-                                {authError && (
-                                    <div className="mb-6 p-3 bg-red-950/90 border border-red-500 rounded text-red-200 font-terminal text-lg leading-snug">
-                                        <i className="fas fa-exclamation-triangle text-yellow-400 mr-2"></i> {authError}
-                                    </div>
-                                )}
-
-                                <div className="space-y-5">
-                                    <div className="bg-gray-800/90 border border-purple-500/60 p-4 rounded-lg">
-                                        <h4 className="font-pixel text-xs text-purple-300 mb-2 flex items-center gap-2">
-                                            <i className="fas fa-link text-yellow-400"></i> <span>Le Lien Magique (Instant)</span>
-                                        </h4>
-                                        <p className="font-terminal text-lg text-gray-300 mb-3">
-                                            Génère un lien direct. Ouvrez-le sur votre téléphone ou autre PC !
-                                        </p>
-                                        <button onClick={generateShareableLink} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded transition-colors uppercase shadow-md flex items-center justify-center gap-2">
-                                            <i className="fas fa-copy"></i> Générer le lien magique
-                                        </button>
-                                    </div>
-
-                                    <div className="bg-gray-800/90 border border-blue-500/60 p-4 rounded-lg">
-                                        <h4 className="font-pixel text-xs text-blue-300 mb-2 flex items-center gap-2">
-                                            <i className="fas fa-key text-yellow-400"></i> <span>Code PIN / Pseudo Cloud</span>
-                                        </h4>
-                                        <p className="font-terminal text-lg text-gray-300 mb-3">
-                                            Entrez le même code secret sur tous vos appareils pour tout synchroniser.
-                                        </p>
-                                        <form onSubmit={handleEnableSyncCode} className="space-y-2">
-                                            <input type="text" required placeholder="ex: retrogamer88" value={inputSyncCode} onChange={(e) => setInputSyncCode(e.target.value)} className="w-full bg-black border border-blue-500 text-white p-2 rounded font-terminal text-xl focus:outline-none focus:border-pink-500"/>
-                                            {syncCode ? (
-                                                <button type="button" onClick={handleDisableSyncCode} className="w-full bg-red-600 hover:bg-red-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded uppercase shadow-md flex items-center justify-center gap-2">
-                                                    <i className="fas fa-unlink"></i> Déconnecter ce code
-                                                </button>
-                                            ) : (
-                                                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded uppercase shadow-md">
-                                                    Activer la synchronisation
-                                                </button>
-                                            )}
-                                        </form>
-                                    </div>
-
-                                    <div className="bg-gray-800/90 border border-gray-700 p-4 rounded-lg">
-                                        <h4 className="font-pixel text-xs text-gray-300 mb-2 flex items-center gap-2">
-                                            <i className="fas fa-paste text-pink-400"></i> <span>Code Texte (Copier/Coller)</span>
-                                        </h4>
-                                        <div className="flex gap-2 mb-3">
-                                            <button onClick={generateTextCode} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-pixel text-[9px] py-2 px-3 rounded transition-colors">Copier le code</button>
-                                        </div>
-                                        <form onSubmit={handleImportTextCode} className="space-y-2">
-                                            <input type="text" placeholder="Collez le code texte ici..." value={textCodeInput} onChange={(e) => setTextCodeInput(e.target.value)} className="w-full bg-black border border-gray-600 text-white p-2 rounded font-terminal text-lg focus:outline-none focus:border-pink-500"/>
-                                            <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 text-white font-pixel text-[9px] py-2 px-3 rounded uppercase">Importer</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
+                    {authError && (
+                        <div className="mb-6 p-4 bg-red-950/90 border border-red-500 rounded text-red-200 font-terminal text-xl text-center">
+                            <i className="fas fa-exclamation-triangle mr-2 text-yellow-400"></i> {authError}
                         </div>
                     )}
 
