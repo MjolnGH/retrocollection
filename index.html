@@ -86,7 +86,6 @@
             color: #fff;
             font-family: 'VT323', monospace;
             overflow-x: hidden;
-            /* Retro synthwave grid background */
             background-image: 
                 linear-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(0, 240, 255, 0.1) 1px, transparent 1px);
@@ -95,7 +94,6 @@
             background-attachment: fixed;
         }
 
-        /* CRT Screen Effect Overlay */
         .crt::before {
             content: " ";
             display: block;
@@ -114,7 +112,6 @@
         .font-pixel { font-family: 'Press Start 2P', cursive; }
         .font-terminal { font-family: 'VT323', monospace; }
 
-        /* Neon Text Effects */
         .neon-text-pink {
             text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
         }
@@ -122,7 +119,6 @@
             text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
         }
 
-        /* Neon Box Effects */
         .neon-border-pink {
             border: 2px solid var(--neon-pink);
             box-shadow: 0 0 10px var(--neon-pink), inset 0 0 10px rgba(255, 0, 127, 0.5);
@@ -132,13 +128,11 @@
             box-shadow: 0 0 10px var(--neon-blue), inset 0 0 10px rgba(0, 240, 255, 0.5);
         }
 
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 10px; }
         ::-webkit-scrollbar-track { background: var(--dark-bg); }
         ::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 5px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
 
-        /* Game Card Hover Animation */
         .game-card {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
@@ -147,7 +141,6 @@
             z-index: 10;
         }
 
-        /* Virtual Box Art Gradient */
         .virtual-box {
             background: linear-gradient(135deg, #2b1055 0%, #7597de 100%);
             position: relative;
@@ -168,7 +161,6 @@
             100% { left: 200%; }
         }
 
-        /* Scrollbar mini pour les descriptions */
         .custom-scrollbar-mini::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar-mini::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar-mini::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 2px; }
@@ -775,7 +767,6 @@
         const getMegadriveCompatibility = (title) => {
             if (!title) return { status: 'unknown', note: null };
             
-            // On vérifie d'abord les incompatibles car ils contiennent souvent des infos plus spécifiques (ex: bugs mineurs)
             const incomp = getMatchInfo(mdIncompatibleRaw, title);
             if (incomp.found) return { status: 'incompatible', note: incomp.note || 'Incompatible 60Hz' };
             
@@ -786,7 +777,6 @@
         };
 
         const App = () => {
-            // Initialisation avec vérification de la sauvegarde locale
             const [games, setGames] = React.useState(() => {
                 const savedGames = localStorage.getItem('retroTrackerData');
                 if (savedGames) {
@@ -804,14 +794,13 @@
             const [hasFirebaseConfig, setHasFirebaseConfig] = React.useState(() => !!window.CloudSync);
             const [userId, setUserId] = React.useState(null);
             const [userEmail, setUserEmail] = React.useState(null);
-            const [syncStatus, setSyncStatus] = React.useState('idle'); // 'idle' | 'syncing' | 'saved' | 'error'
+            const [syncStatus, setSyncStatus] = React.useState('idle');
             const [showAuthModal, setShowAuthModal] = React.useState(false);
             const [authError, setAuthError] = React.useState(null);
             const [isAuthLoading, setIsAuthLoading] = React.useState(false);
             const [syncCode, setSyncCode] = React.useState(() => localStorage.getItem('retroTrackerSyncCode') || null);
             const [inputSyncCode, setInputSyncCode] = React.useState("");
             
-            // Nouveaux états pour le partage par URL, Code Texte & Firebase GitHub
             const [copiedMessage, setCopiedMessage] = React.useState(null);
             const [textCodeInput, setTextCodeInput] = React.useState("");
             const [customFbInput, setCustomFbInput] = React.useState("");
@@ -824,7 +813,6 @@
                 };
             }, []);
 
-            // Initialisation et écoute de la base de données Cloud
             React.useEffect(() => {
                 let unsubscribeDoc = null;
                 let unsubscribeAuth = null;
@@ -837,7 +825,6 @@
                     }
                     const { auth, signInWithCustomToken, signInAnonymously, db, doc, setDoc, onSnapshot, onAuthStateChanged, appId } = window.CloudSync;
                     
-                    // Écouteur de changement d'état d'authentification
                     unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
                         if (unsubscribeDoc) {
                             unsubscribeDoc();
@@ -861,7 +848,6 @@
                         setUserEmail(user.email || null);
                         setIsCloudConnected(true);
 
-                        // Détermination de la référence du document selon la règle stricte des chemins
                         const docRef = syncCode 
                             ? doc(db, 'artifacts', appId, 'public', 'data', 'sharedCollections', syncCode)
                             : doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'gamesCollection');
@@ -876,7 +862,6 @@
                                     setTimeout(() => setSyncStatus('idle'), 2000);
                                 }
                             } else {
-                                // Première création pour ce code : transmission des données locales actuelles
                                 const currentGames = JSON.parse(localStorage.getItem('retroTrackerData')) || games;
                                 setDoc(docRef, { games: currentGames, lastUpdated: Date.now() });
                             }
@@ -894,29 +879,6 @@
                     if (unsubscribeAuth) unsubscribeAuth();
                 };
             }, [syncCode, hasFirebaseConfig]);
-            const handleGoogleSignIn = async () => {
-                if (!window.CloudSync) return;
-                const { auth, GoogleAuthProvider, signInWithPopup } = window.CloudSync;
-                setIsAuthLoading(true);
-                setAuthError(null);
-
-                try {
-                    const provider = new GoogleAuthProvider();
-                    await signInWithPopup(auth, provider);
-                    setShowAuthModal(false);
-                } catch (err) {
-                    console.error("Erreur connexion Google:", err);
-                    if (err.code === 'auth/unauthorized-domain') {
-                        setAuthError("Ce domaine web n'est pas autorisé dans Firebase. Utilisez les options Lien Magique ou Code Secret ci-dessus pour accéder à vos données partout sans restriction !");
-                    } else if (err.code === 'auth/popup-blocked') {
-                        setAuthError("La fenêtre surgissante a été bloquée par votre navigateur.");
-                    } else {
-                        setAuthError("Erreur de connexion : " + (err.message || "Impossible de se connecter"));
-                    }
-                } finally {
-                    setIsAuthLoading(false);
-                }
-            };
 
             const handleEnableSyncCode = (e) => {
                 e.preventDefault();
@@ -933,20 +895,35 @@
                 setSyncCode(null);
             };
 
+            // Fonction améliorée : tolère à la fois le JSON strict ET le format JS copier-coller de Firebase sans guillemets aux clés
             const handleSaveCustomFirebase = (e) => {
                 e.preventDefault();
                 setFbConfigError(null);
                 try {
-                    const cleanInput = customFbInput.trim();
+                    let cleanInput = customFbInput.trim();
                     let parsed;
+
                     if (cleanInput.startsWith('{')) {
-                        parsed = JSON.parse(cleanInput);
+                        try {
+                            // Tentative 1 : JSON Strict
+                            parsed = JSON.parse(cleanInput);
+                        } catch (err) {
+                            // Tentative 2 : Conversion automatique du format JS (ex: apiKey: "..." -> "apiKey": "...")
+                            try {
+                                const formattedJson = cleanInput
+                                    .replace(/([{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":')
+                                    .replace(/,\s*([}\]])/g, '$1');
+                                parsed = JSON.parse(formattedJson);
+                            } catch (e2) {
+                                throw new Error("Format invalide. Copiez le bloc commençant par { et se terminant par }.");
+                            }
+                        }
                     } else {
-                        throw new Error("Veuillez coller un objet JSON Firebase valide {\"apiKey\": ...}");
+                        throw new Error("Le texte doit être un bloc de configuration entre accolades { ... }.");
                     }
 
-                    if (!parsed.apiKey || !parsed.projectId) {
-                        throw new Error("Le JSON doit contenir au moins 'apiKey' et 'projectId'.");
+                    if (!parsed || !parsed.apiKey || !parsed.projectId) {
+                        throw new Error("Le bloc doit contenir au moins 'apiKey' et 'projectId'.");
                     }
 
                     const ok = window.setupFirebaseConfig(parsed);
@@ -960,7 +937,7 @@
                         setFbConfigError("Échec de l'initialisation de Firebase avec cette configuration.");
                     }
                 } catch (err) {
-                    setFbConfigError(err.message || "Erreur de format du JSON.");
+                    setFbConfigError(err.message || "Erreur de format.");
                 }
             };
 
@@ -973,7 +950,6 @@
                 }
             };
 
-            // ---- Fonctions de Partage par Lien & Code Texte ----
             const generateShareableLink = () => {
                 try {
                     const jsonString = JSON.stringify(games);
@@ -981,7 +957,6 @@
                     const baseUrl = window.location.href.split('#')[0];
                     const fullUrl = `${baseUrl}#data=${encodedData}`;
                     
-                    // Copie dans le presse-papier
                     const tempInput = document.createElement('input');
                     tempInput.value = fullUrl;
                     document.body.appendChild(tempInput);
@@ -1049,7 +1024,6 @@
                 }
             };
 
-            // Sauvegarde automatique distante et locale
             const saveGamesData = (updatedGames) => {
                 setGames(updatedGames);
                 localStorage.setItem('retroTrackerData', JSON.stringify(updatedGames));
@@ -1078,7 +1052,6 @@
             const [showAddForm, setShowAddForm] = React.useState(false);
             const [sortMode, setSortMode] = React.useState("alpha");
             
-            // Form State
             const [newTitle, setNewTitle] = React.useState("");
             const [newConsole, setNewConsole] = React.useState("Megadrive");
             const [newStatus, setNewStatus] = React.useState("wanted");
@@ -1147,7 +1120,6 @@
                 setShowAddForm(!showAddForm);
             };
 
-            // ---- Fonction d'Importation ----
             const handleImport = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1185,7 +1157,6 @@
                 e.target.value = null;
             };
 
-            // ---- Fonction d'Exportation de données (JSON) ----
             const exportJSON = () => {
                 try {
                     const dataStr = JSON.stringify(games, null, 2);
@@ -1204,7 +1175,6 @@
                 }
             };
 
-            // ---- Fonction d'Exportation HTML complet ----
             const exportHTML = () => {
                 try {
                     const scriptNode = document.querySelector('script[type="text/babel"]');
@@ -1252,7 +1222,6 @@
 
             return (
                 <div className="container mx-auto px-4 py-6 max-w-7xl relative z-10 font-terminal">
-                    {/* Header */}
                     <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-purple-900/50 pb-6">
                         <div>
                             <h1 className="font-pixel text-2xl sm:text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 font-bold mb-2">
@@ -1261,7 +1230,6 @@
                             <p className="text-gray-400 text-lg sm:text-xl">Gestionnaire de Collection Retrogaming</p>
                         </div>
 
-                        {/* Badge de statut Cloud Sync & Bouton Google Auth / Code */}
                         <div className="inline-flex flex-wrap items-center justify-center gap-3 bg-gray-900/90 border border-purple-500/50 px-4 py-2 rounded-2xl text-xs font-pixel shadow-lg">
                             <div className="flex items-center gap-2">
                                 {isCloudConnected ? (
@@ -1281,7 +1249,6 @@
 
                             <div className="h-4 w-px bg-purple-500/40 hidden sm:block"></div>
 
-                            {/* Section Compte ou Code de Synchro */}
                             {syncCode ? (
                                 <div className="flex items-center gap-2 bg-blue-950/80 border border-blue-400/50 px-3 py-1 rounded-xl">
                                     <i className="fas fa-key text-yellow-400"></i>
@@ -1318,7 +1285,6 @@
                         </div>
                     </header>
 
-                    {/* Modal d'Accès Multi-Appareils (Lien, Code & Cloud) */}
                     {showAuthModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
                             <div className="bg-gray-900 border-2 border-pink-500 p-6 rounded-lg max-w-lg w-full shadow-[0_0_30px_rgba(236,72,153,0.4)] relative max-h-[90vh] overflow-y-auto custom-scrollbar-mini">
@@ -1354,7 +1320,6 @@
                                 )}
 
                                 <div className="space-y-5">
-                                    {/* Section Configuration Firebase (Hébergement GitHub / Externe) */}
                                     {(!hasFirebaseConfig || showFbSettings) && (
                                         <div className="bg-amber-950/80 border border-amber-500/80 p-4 rounded-lg">
                                             <h4 className="font-pixel text-xs text-amber-300 mb-2 flex items-center gap-2">
@@ -1362,7 +1327,7 @@
                                                 <span>Configuration Firebase (Activer Code PIN sur GitHub)</span>
                                             </h4>
                                             <p className="font-terminal text-lg text-amber-100 mb-3 leading-snug">
-                                                Sur Gemini Share, la base de données est fournie automatiquement. Sur <strong>GitHub Pages</strong>, collez une fois la configuration Firebase de votre projet (création gratuite sur <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline text-pink-400">Firebase Console</a>) :
+                                                Collez ci-dessous le bloc Firebase copié depuis la console. Vous pouvez le coller tel quel (avec ou sans guillemets aux mots clés) :
                                             </p>
                                             
                                             {fbConfigError && (
@@ -1373,8 +1338,8 @@
 
                                             <form onSubmit={handleSaveCustomFirebase} className="space-y-3">
                                                 <textarea 
-                                                    rows="4" 
-                                                    placeholder='{"apiKey": "AIzaSy...", "authDomain": "...firebaseapp.com", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}'
+                                                    rows="5" 
+                                                    placeholder='Copiez le bloc entre { ... } :&#10;{&#10;  apiKey: "AIzaSy...",&#10;  authDomain: "...",&#10;  projectId: "..."&#10;}'
                                                     value={customFbInput}
                                                     onChange={(e) => setCustomFbInput(e.target.value)}
                                                     className="w-full bg-black border border-amber-500/60 text-amber-200 p-2 font-mono text-xs rounded focus:outline-none focus:border-pink-500"
@@ -1428,7 +1393,6 @@
                                         </div>
                                     )}
 
-                                    {/* METHODE 1 : Lien Magique (100% garanti) */}
                                     <div className="bg-gray-800/90 border border-purple-500/60 p-4 rounded-lg">
                                         <h4 className="font-pixel text-xs text-purple-300 mb-2 flex items-center gap-2">
                                             <i className="fas fa-link text-yellow-400"></i>
@@ -1446,7 +1410,6 @@
                                         </button>
                                     </div>
 
-                                    {/* METHODE 2 : Code PIN / Pseudo Cloud */}
                                     <div className="bg-gray-800/90 border border-blue-500/60 p-4 rounded-lg">
                                         <h4 className="font-pixel text-xs text-blue-300 mb-2 flex items-center gap-2">
                                             <i className="fas fa-key text-yellow-400"></i>
@@ -1473,7 +1436,6 @@
                                         </form>
                                     </div>
 
-                                    {/* METHODE 3 : Copier / Coller de Code Texte */}
                                     <div className="bg-gray-800/90 border border-gray-700 p-4 rounded-lg">
                                         <h4 className="font-pixel text-xs text-gray-300 mb-2 flex items-center gap-2">
                                             <i className="fas fa-paste text-pink-400"></i>
@@ -1508,10 +1470,7 @@
                         </div>
                     )}
 
-                    {/* Controls (Search, Add, Tabs) */}
                     <div className="mb-8 space-y-6">
-                        
-                        {/* Console Tabs */}
                         <div className="flex flex-wrap justify-center gap-2 mb-6">
                             {CONSOLES.map(c => (
                                 <button
@@ -1525,7 +1484,6 @@
                         </div>
 
                         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                            {/* Search */}
                             <div className="relative w-full md:flex-1">
                                 <i className="fas fa-search absolute left-3 top-3 text-blue-400"></i>
                                 <input 
@@ -1537,7 +1495,6 @@
                                 />
                             </div>
 
-                            {/* Sort Dropdown */}
                             <div className="relative w-full md:w-48">
                                 <i className="fas fa-sort absolute left-3 top-3 text-pink-400"></i>
                                 <select 
@@ -1550,7 +1507,6 @@
                                 </select>
                             </div>
                             
-                            {/* Actions Buttons (Add, Export & Import) */}
                             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto flex-wrap justify-end">
                                 <button 
                                     onClick={handleToggleForm}
@@ -1593,7 +1549,6 @@
                             </div>
                         </div>
 
-                        {/* Add Game Form */}
                         {showAddForm && (
                             <form onSubmit={handleSubmit} className="bg-gray-900 border-2 border-purple-500 p-6 shadow-[0_0_15px_#8a2be2] mb-8 animate-[fadeIn_0.3s_ease-out]">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
@@ -1667,7 +1622,6 @@
                         )}
             
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* COLUMN: OWNED GAMES */}
                             <div className="bg-[#0a0a1a] border border-blue-900 rounded-xl p-4 md:p-6 shadow-[inset_0_0_50px_rgba(0,240,255,0.05)] h-full">
                                 <h2 className="font-pixel text-xl md:text-2xl mb-6 text-center neon-text-blue border-b-2 border-blue-900 pb-4">
                                     <i className="fas fa-star text-yellow-400 mr-3"></i>
@@ -1679,7 +1633,6 @@
                                 </div>
                             </div>
 
-                            {/* COLUMN: WANTED GAMES */}
                             <div className="bg-[#1a0a10] border border-pink-900 rounded-xl p-4 md:p-6 shadow-[inset_0_0_50px_rgba(255,0,127,0.05)] h-full">
                                 <h2 className="font-pixel text-xl md:text-2xl mb-6 text-center neon-text-pink border-b-2 border-pink-900 pb-4">
                                     <i className="fas fa-crosshairs text-red-500 mr-3"></i>
@@ -1700,13 +1653,11 @@
         const GameCard = ({ game, toggleStatus, onDelete, onEdit }) => {
             const isOwned = game.status === "owned";
             
-            // Console visual identification
             let consoleColor = "text-gray-400";
             if (game.console === "Megadrive") consoleColor = "text-red-500";
             if (game.console === "Super Famicom") consoleColor = "text-yellow-400";
             if (game.console === "Master System") consoleColor = "text-blue-400";
 
-            // Region Color Mapping
             const getRegionColorClass = (region) => {
                 if (region === 'PAL') return 'bg-blue-900 text-blue-300 border border-blue-500';
                 if (region === 'US') return 'bg-purple-900 text-purple-300 border border-purple-500';
@@ -1714,13 +1665,10 @@
                 return 'bg-gray-800 text-gray-300 border border-gray-500';
             };
 
-            // AUTO-JAQUETTE: Astuce de hacker utilisant le moteur de miniatures ouvert de Bing
             const autoCoverUrl = `https://tse2.mm.bing.net/th?q=${encodeURIComponent(game.title + ' ' + game.console + ' game box art cover')}`;
             
-            // State pour gérer l'affichage de l'image (fournie par l'utilisateur OU auto-générée)
             const [imgSrc, setImgSrc] = React.useState(game.img || autoCoverUrl);
 
-            // Mettre à jour l'image si la donnée du jeu change
             React.useEffect(() => {
                 setImgSrc(game.img || autoCoverUrl);
             }, [game.img, autoCoverUrl]);
@@ -1728,16 +1676,13 @@
             return (
                 <div className={`game-card relative bg-black flex flex-col h-full rounded-md overflow-hidden ${isOwned ? 'border border-blue-700 hover:border-blue-400' : 'border border-pink-700 hover:border-pink-400'}`}>
                     
-                    {/* Top Left Badges: Region and Hz Compatibility */}
                     <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start">
-                        {/* Region Badge */}
                         {game.region && (
                             <div className={`px-2 py-1 font-pixel text-[8px] rounded ${getRegionColorClass(game.region)}`}>
                                 {game.region}
                             </div>
                         )}
 
-                        {/* Hz Compatibility Badge (Megadrive only) */}
                         {(() => {
                             if (game.console === "Megadrive") {
                                 const compInfo = getMegadriveCompatibility(game.title);
@@ -1774,11 +1719,10 @@
                             alt={game.title} 
                             className="max-w-full max-h-full object-contain drop-shadow-[0_0_15px_rgba(0,0,0,0.5)] opacity-90 hover:opacity-100 transition-opacity" 
                             onError={() => { 
-                                // Si l'image Wikipedia de la liste initiale meurt, on tente notre auto-jaquette magique.
                                 if (imgSrc !== autoCoverUrl) {
                                     setImgSrc(autoCoverUrl);
                                 } else {
-                                    setImgSrc(''); // Si même l'auto-jaquette échoue, on masque l'image brisée.
+                                    setImgSrc('');
                                 }
                             }} 
                             style={{ display: imgSrc ? 'block' : 'none' }}
@@ -1801,7 +1745,6 @@
                             <p className={`font-terminal text-base sm:text-lg mb-2 ${consoleColor}`}>{game.console}</p>
                         </div>
                         
-                        {/* Raccourcis Marché (Uniquement pour les jeux Recherchés) */}
                         {!isOwned && (
                             <div className="flex gap-2 mt-1 mb-3">
                                 <a 
