@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroCollec Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --neon-pink: #ff007f;
+            --neon-blue: #00f0ff;
+            --neon-purple: #8a2be2;
+            --dark-bg: #050510;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: 'VT323', monospace;
+            overflow-x: hidden;
+            /* Retro synthwave grid background */
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center bottom;
+            background-attachment: fixed;
+        }
+
+        /* CRT Screen Effect Overlay */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 50;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .font-pixel { font-family: 'Press Start 2P', cursive; }
+        .font-terminal { font-family: 'VT323', monospace; }
+
+        /* Neon Text Effects */
+        .neon-text-pink {
+            text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+        }
+        .neon-text-blue {
+            text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+        }
+
+        /* Neon Box Effects */
+        .neon-border-pink {
+            border: 2px solid var(--neon-pink);
+            box-shadow: 0 0 10px var(--neon-pink), inset 0 0 10px rgba(255, 0, 127, 0.5);
+        }
+        .neon-border-blue {
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue), inset 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: var(--dark-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
+
+        /* Game Card Hover Animation */
+        .game-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .game-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            z-index: 10;
+        }
+
+        /* Virtual Box Art Gradient */
+        .virtual-box {
+            background: linear-gradient(135deg, #2b1055 0%, #7597de 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .virtual-box::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: shine 6s infinite;
+        }
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+
+        /* Scrollbar mini pour les descriptions */
+        .custom-scrollbar-mini::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar-mini::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar-mini::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 2px; }
+    </style>
+</head>
+<body class="crt min-h-screen">
+    <div id="root"></div>
+    <script type="text/babel">
+        const initialGames = [
+          {
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJdzp-wrZ3OFUDpg-_OiuD8mpssMsxiDwhYwAi0HbtGg&s=10",
+                    "region": "PAL",
+                    "status": "wanted",
+                    "id": 1791107397272,
+                    "console": "Megadrive",
+                    "title": "Mickael Jackson's Moonwalker"
+          },
+          {
+                    "title": "Turtles in time",
+                    "id": 41,
+                    "status": "wanted",
+                    "region": "JAP",
+                    "description": "Les Tortues Ninja voyagent dans le temps. Le meilleur Beat'em up TMNT.",
+                    "console": "Super Famicom",
+                    "img": "https://m.media-amazon.com/images/M/MV5BZjdmNWQxMWQtZWYxYS00ODNhLTg2NGItNjVlNmZmZGU0ZGFjXkEyXkFqcGc@._V1_.jpg"
+          },
+          {
+                    "region": "JAP",
+                    "id": 1789247990294,
+                    "status": "wanted",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSMpkvl2Vz1fK1gvKDVGtq-1YHPJgcld5Qz30H44qmarA&s=10",
+                    "title": "Super Volleyball",
+                    "console": "Megadrive"
+          },
+          {
+                    "id": 1789247786031,
+                    "console": "Megadrive",
+                    "title": "Hokuto no Ken",
+                    "region": "JAP",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcToGrudXGzzR2FmPFqkRrcVIz1EqKLzf0O2JfPniZLQ0g&s=10",
+                    "status": "wanted"
+          },
+          {
+                    "id": 1789247731648,
+                    "title": "Golden Axe",
+                    "status": "wanted",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvlQeHtJccrMTjDNhcuF-9plLtoI37t4xOV_vG2mqmcQ&s=10",
+                    "console": "Megadrive",
+                    "region": "PAL"
+          },
+          {
+                    "id": 3,
+                    "region": "PAL",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNjcQzfsxiK6ctuRNCE3i5ka5RERrXz86GwN3-A36CFw&s=10",
+                    "status": "wanted",
+                    "console": "Megadrive",
+                    "description": "Plateforme 2D à l'humour absurde où un ver de terre contrôle une super armure.",
+                    "title": "Earth Worm Jim"
+          },
+          {
+                    "description": "Deux aliens funkys s'écrasent sur Terre. Un ovni du rogue-like en coop.",
+                    "region": "PAL",
+                    "title": "Toe Jam and Earl",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3AnLD85OR3wC_khyVCaydz9NwUgLstrdoIjDq5SFOkQ&s",
+                    "id": 13,
+                    "status": "wanted",
+                    "console": "Megadrive"
+          },
+          {
+                    "id": 1789247594988,
+                    "region": "JAP",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRiVcE2z3Ih0trg1BRNJpt33OUIPwvQx_MMLPiZH8xpAw&s=10",
+                    "status": "wanted",
+                    "console": "Super Famicom",
+                    "title": "Pilotwings"
+          },
+          {
+                    "region": "JAP",
+                    "status": "wanted",
+                    "id": 1789247568504,
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRGOiWiYyPP4aoDnuuQrSW99ldo_Asak-U9q87iCShuVQ&s=10",
+                    "title": "Axelay",
+                    "console": "Super Famicom"
+          },
+          {
+                    "console": "Super Famicom",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTTIUWpI_T4AoQpDbIwYWrm7lhpo2c-a4ZmimtaOg0Hmg&s=10",
+                    "region": "JAP",
+                    "status": "wanted",
+                    "title": "Super Mario World",
+                    "id": 1789247504795
+          },
+          {
+                    "title": "Thunder force 4",
+                    "status": "owned",
+                    "region": "PAL",
+                    "console": "Megadrive",
+                    "description": "La perfection du Shmup 16-bit. Graphismes ahurissants et musiques d'anthologie.",
+                    "id": 25,
+                    "img": "https://upload.wikimedia.org/wikipedia/en/f/fc/Thunder_Force_IV_Cover.jpg"
+          },
+          {
+                    "description": "Simulation de tennis incroyablement technique et addictive.",
+                    "region": "PAL",
+                    "status": "owned",
+                    "console": "Super Famicom",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSMrmSY7Qnq1196PeA_WQi5_uNDo3hAud6gUJ7epe4s7g&s=10",
+                    "title": "Super Tennis",
+                    "id": 40
+          },
+          {
+                    "description": "Flipper diabolique sur plusieurs écrans avec une ambiance occulte et une physique de balle incroyable.",
+                    "id": 1,
+                    "region": "US",
+                    "status": "owned",
+                    "title": "Dragons's fury",
+                    "console": "Megadrive",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSs0yroD4NB5iFikzBHjG4flzJeG9PFqbnern8yd_7b9Q&s=10"
+          },
+          {
+                    "description": "La référence du hockey sur glace 16-bit. Bagarres sur la glace incluses !",
+                    "region": "PAL",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCheuUUDbNGC-haWblD0qibVkEdIHHeV_0LGxSorI0kA&s=10",
+                    "status": "owned",
+                    "id": 2,
+                    "title": "EA hockey",
+                    "console": "Megadrive"
+          },
+          {
+                    "region": "PAL",
+                    "status": "owned",
+                    "description": "Jeu d'aventure poétique et difficile où vous incarnez un dauphin voyageant dans le temps.",
+                    "id": 4,
+                    "console": "Megadrive",
+                    "title": "Ecco the Dolphin",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRDpbB5gX3ab04D6q7VJINVxDPPXBfLrXDIyHemKzE2Kg&s=10"
+          },
+          {
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXh1Ow852ztD-vfgOz3NDUTnTe_Nb4oDbO_svNTWIZcA&s=10",
+                    "region": "PAL",
+                    "title": "Castle of Illusion",
+                    "console": "Megadrive",
+                    "id": 5,
+                    "status": "owned",
+                    "description": "Mickey explore un château magique pour sauver Minnie. Un chef d'œuvre de la plateforme."
+          },
+          {
+                    "region": "PAL",
+                    "console": "Megadrive",
+                    "id": 6,
+                    "status": "owned",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTxJzjxBGhSV-3kZbh_1zBcqGCYdzIwWqG5kSS4vjwuyQ&s=10",
+                    "description": "Aventure féérique en coop où Mickey et Donald combinent leurs forces.",
+                    "title": "World of Illusion"
+          },
+          {
+                    "title": "Revenge of Shinobi",
+                    "console": "Megadrive",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/3/30/Revenge_of_Shinobi_Genesis_box_art.jpg",
+                    "description": "Le ninja Joe Musashi affronte Neo Zeed. Musique de Yuzo Koshiro légendaire.",
+                    "id": 7,
+                    "status": "owned",
+                    "region": "PAL"
+          },
+          {
+                    "id": 8,
+                    "region": "PAL",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRDkxAWY1Pwr6i-T2YJSstBQ0EibDBRLIsTLitaGqKxFA&s=10",
+                    "title": "Sonic",
+                    "status": "owned",
+                    "description": "Le hérisson bleu hyper-rapide qui a révolutionné la console de Sega.",
+                    "console": "Megadrive"
+          },
+          {
+                    "region": "PAL",
+                    "console": "Megadrive",
+                    "status": "owned",
+                    "id": 9,
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT1qOVF7DjvL2Be_mu2G17Z5OZ0INwPeFrAlITzFlClbw&s=10",
+                    "title": "Sonic 2",
+                    "description": "L'arrivée de Tails, du Spin Dash, et des niveaux spéciaux en simili-3D."
+          },
+          {
+                    "id": 10,
+                    "console": "Megadrive",
+                    "status": "owned",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgAa-ynTfGPzg3sa6zTyb5YdXiNnCr9QhjlVQkkGbarA&s=10",
+                    "region": "PAL",
+                    "title": "Sonic 3",
+                    "description": "Une aventure épique avec des niveaux gigantesques et l'apparition de Knuckles."
+          },
+          {
+                    "title": "Streets of rage ",
+                    "status": "owned",
+                    "description": "Beat'em up urbain fondateur. Nettoyez les rues à coups de poing !",
+                    "region": "PAL",
+                    "id": 11,
+                    "console": "Megadrive",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQvazUj_RuVE4CCzP7M_pBxB5WEAGqeQtlFzAJ2kNbV7Q&s=10"
+          },
+          {
+                    "title": "Streets of rage 2",
+                    "status": "owned",
+                    "description": "Considéré comme l'un des meilleurs beat'em up de tous les temps. Gameplay parfait.",
+                    "region": "JAP",
+                    "id": 12,
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCqcOsVCImWl4qSYeGW2Our85L16VMN2-IIHT4ygPCpw&s=10",
+                    "console": "Megadrive"
+          },
+          {
+                    "console": "Megadrive",
+                    "title": "Whip Rush",
+                    "region": "JAP",
+                    "id": 14,
+                    "description": "Shoot'em up spatial nerveux avec un système de modules multidirectionnels.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRgM34uwm3Wg_pEelbXcEq9_1WipS9ElegBF1TxrlsE_Q&s=10",
+                    "status": "owned"
+          },
+          {
+                    "id": 15,
+                    "console": "Megadrive",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/d/da/Alien_Storm_cover.jpg",
+                    "region": "PAL",
+                    "description": "Sauvez la terre d'une invasion d'aliens visqueux dans ce beat'em up frénétique.",
+                    "title": "Alien storm",
+                    "status": "wanted"
+          },
+          {
+                    "region": "PAL",
+                    "status": "wanted",
+                    "title": "Flashback",
+                    "console": "Megadrive",
+                    "id": 17,
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQBrzNDK-pYrdao_DJN7P3qAvDEFcHFRJGcnNtRyoHjww&s=10",
+                    "description": "Chef d'œuvre d'animation rotoscopée à la française. Une grande aventure SF."
+          },
+          {
+                    "id": 20,
+                    "region": "PAL",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR9M0ojuJnO0xEqCue6Z-Ewga16oLBB8mKI0K8_cHjYrA&s=10",
+                    "description": "Super Monaco GP, une des meilleures simulations de F1 de l'époque.",
+                    "status": "wanted",
+                    "title": "Monaco GP",
+                    "console": "Megadrive"
+          },
+          {
+                    "region": "US",
+                    "console": "Megadrive",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRWj2SuBu1VC5Qeya79DKaJ4r8OUJ7MBZPgBfvYeLL3HA&s=10",
+                    "description": "Aventure action/plateforme horrifique avec des pouvoirs magiques évolutifs.",
+                    "status": "wanted",
+                    "title": "Mystic Defender",
+                    "id": 21
+          },
+          {
+                    "title": "Shadow Dancer",
+                    "description": "Infiltrez les bases ennemies avec votre fidèle chien loup d'attaque.",
+                    "status": "wanted",
+                    "id": 23,
+                    "console": "Megadrive",
+                    "region": "US",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQYVHvgtgRX38mb9AgcgN7Xxz9fWbBvAX3EaBReWoRuKw&s=10"
+          },
+          {
+                    "region": "PAL",
+                    "description": "Shoot'em up spatial de légende au défilement horizontal fluide.",
+                    "status": "wanted",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQBYf3DJ8wRDsB1YmZgfwyFbd6Fa5BWUrs8kfrOaUAhw&s=10",
+                    "console": "Megadrive",
+                    "id": 24,
+                    "title": "Thunder force 3"
+          },
+          {
+                    "console": "Megadrive",
+                    "status": "wanted",
+                    "id": 26,
+                    "title": "Truxton",
+                    "region": "PAL",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQnL-SfBht3mpzzrt6x0t3ALQqcDHAF7a5sXYB7K1axA&s=10",
+                    "description": "Shoot vertical exigeant avec des armes au pouvoir destructeur massif."
+          },
+          {
+                    "region": "PAL",
+                    "description": "Shmup vitrine technologique utilisant le Mode 7 de façon spectaculaire.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTA8OdRrSBKkDXX6D7ibQi0eplGxMa3fbajjI1lEABqSA&s=10",
+                    "status": "owned",
+                    "console": "Super Famicom",
+                    "title": "Axelay",
+                    "id": 27
+          },
+          {
+                    "title": "Dragon Ball Z super butoden",
+                    "console": "Super Famicom",
+                    "description": "Super Butōden. Les premiers combats en écran splitté.",
+                    "id": 28,
+                    "status": "owned",
+                    "region": "JAP",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSd_J_-r2Si2qKlXV36u_HNwmysraWHCCIDp4Wk4SKEug&s=10"
+          },
+          {
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRn8g5gDXCLrV_4P0XzvybG6uczvZb8V3i6JvcqMe3khQ&s=10",
+                    "console": "Super Famicom",
+                    "region": "JAP",
+                    "title": "Dragon ball Z super butoden 2",
+                    "id": 29,
+                    "description": "La suite culte avec Broly et des attaques spéciales gigantesques.",
+                    "status": "owned"
+          },
+          {
+                    "region": "JAP",
+                    "console": "Super Famicom",
+                    "status": "owned",
+                    "title": "Ghouls and ghost",
+                    "description": "Arthur se bat en caleçon dans un univers sombre. Difficulté extrême.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZESMdOqpkABgUA6-llXrzTyva5snoI6kq1LruNuvDKw&s=10",
+                    "id": 30
+          },
+          {
+                    "console": "Super Famicom",
+                    "title": "F-zero",
+                    "region": "PAL",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdyS0x_S1dUQsCYzJHPSyDVclsfxSQPd2cqAL5FxNbUg&s=10",
+                    "id": 31,
+                    "description": "Course de vaisseaux futuristes fondatrice avec Captain Falcon.",
+                    "status": "owned"
+          },
+          {
+                    "id": 32,
+                    "title": "Pilotwings",
+                    "status": "owned",
+                    "region": "PAL",
+                    "description": "Simulateur de vol cool et technique (parachute, deltaplane...).",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/6/6a/Pilotwings_box.jpg",
+                    "console": "Super Famicom"
+          },
+          {
+                    "title": "Street fighter 2 turbo",
+                    "console": "Super Famicom",
+                    "status": "owned",
+                    "id": 33,
+                    "region": "JAP",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYwQ93-QEEgfk_DDI7OnZ0VgTBcNOBFkp411EtfzWWXQ&s=10",
+                    "description": "Le roi des jeux de combat de retour dans sa version accélérée."
+          },
+          {
+                    "console": "Super Famicom",
+                    "status": "owned",
+                    "description": "Destruction d'amitiés certifiée à grands coups de carapaces rouges.",
+                    "title": "Super Mario Kart",
+                    "region": "JAP",
+                    "id": 34,
+                    "img": "https://upload.wikimedia.org/wikipedia/en/3/38/Supermariokart_box.JPG"
+          },
+          {
+                    "description": "Aventure gigantesque marquant la première apparition du dinosaure Yoshi.",
+                    "id": 35,
+                    "console": "Super Famicom",
+                    "title": "Super Mario World",
+                    "status": "owned",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/3/32/Super_Mario_World_Coverart.png",
+                    "region": "JAP"
+          },
+          {
+                    "img": "https://upload.wikimedia.org/wikipedia/en/2/21/The_Legend_of_Zelda_A_Link_to_the_Past_SNES_Game_Cover.jpg",
+                    "console": "Super Famicom",
+                    "title": "Zelda: ALTTP",
+                    "status": "owned",
+                    "description": "A Link to the Past. Un chef d'œuvre intemporel de l'aventure.",
+                    "id": 36,
+                    "region": "JAP"
+          },
+          {
+                    "status": "wanted",
+                    "description": "Run and Gun explosif et hardcore face aux extraterrestres.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQevWW3A5ivFH7Bt78RngDWcaAgnwZFg103aG-UA9ZM4A&s=10",
+                    "region": "JAP",
+                    "title": "Contra Spirits",
+                    "console": "Super Famicom",
+                    "id": 39
+          },
+          {
+                    "id": 42,
+                    "console": "Master System",
+                    "description": "Jeu de karaté exigeant face à des hordes d'ennemis.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSW665NAzsOBY4lyF1yHc-UYz2lcJ1kbY4SzEZ0Z_Hs9w&s=10",
+                    "region": "PAL",
+                    "status": "owned",
+                    "title": "Black belt"
+          },
+          {
+                    "description": "Tir au pistolet optique (Light Phaser) contre la mafia.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQWP4Q2jQp0Zq8mtSrvCesuYcctkgBBGXLBNLF_8Mgovw&s=10",
+                    "console": "Master System",
+                    "region": "PAL",
+                    "title": "Gangster Town",
+                    "id": 43,
+                    "status": "owned"
+          },
+          {
+                    "region": "PAL",
+                    "id": 44,
+                    "status": "owned",
+                    "description": "Jeu de tir militaire intense adapté de l'arcade.",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS6y9M7Sn37Ix02Bemi5P7bBCA5y4kLQ8qOqK2XJ_wJ7g&s=10",
+                    "title": "Operation wolf",
+                    "console": "Master System"
+          },
+          {
+                    "console": "Master System",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSBUMW157UPLqpCr00aJ6j0extKTK8TtN8etE4q7mFYdw&s=10",
+                    "status": "owned",
+                    "id": 45,
+                    "description": "Plateforme original avec inertie marquée et transformations animales.",
+                    "region": "PAL",
+                    "title": "Psycho Fox"
+          },
+          {
+                    "description": "L'un des meilleurs portages 8-bit de ce monument du shmup.",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/1/14/R-Type_System_3.jpg",
+                    "id": 46,
+                    "region": "PAL",
+                    "status": "owned",
+                    "title": "R-Type",
+                    "console": "Master System"
+          },
+          {
+                    "console": "Master System",
+                    "region": "PAL",
+                    "title": "Choplifter",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Choplifter_cover.jpg/220px-Choplifter_cover.jpg",
+                    "status": "owned",
+                    "id": 47,
+                    "description": "Pilotez un hélicoptère pour sauver des otages en zone de guerre."
+          },
+          {
+                    "id": 48,
+                    "title": "Thunder Blade",
+                    "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmPkgD184bZFsI1awaYermxwitRZyPv7Z-0MnPmMHBEw&s=10",
+                    "status": "owned",
+                    "console": "Master System",
+                    "region": "PAL",
+                    "description": "Action en hélico alternant vues de dessus et effets de profondeur 3D."
+          },
+          {
+                    "console": "Master System",
+                    "title": "Shinobi",
+                    "status": "wanted",
+                    "description": "L'original sur Master System. Magie ninja et sauvetage d'otages.",
+                    "img": "https://upload.wikimedia.org/wikipedia/en/a/ad/Shinobi_Master_System.jpg",
+                    "id": 49,
+                    "region": "PAL"
+          },
+          {
+                    "img": "https://upload.wikimedia.org/wikipedia/en/9/9d/Out_Run_European_Master_System_box_art.jpg",
+                    "console": "Master System",
+                    "title": "OutRun",
+                    "status": "wanted",
+                    "region": "PAL",
+                    "id": 50,
+                    "description": "Course arcade cheveux au vent dans une Ferrari Testarossa."
+          }
+];
+
+        const CONSOLES = ["Toutes", "Megadrive", "Super Famicom", "Master System"];
+
+        const mdCompatibleRaw = [
+            "688 attack sub", "Addams family value", "Addams family", "After burner 2", "Aladdin",
+            "Alex kidd in the enchanted castle", "Alien 3", "Alien soldier", "Alisia dragoon",
+            "Altered beast", "Andre agassi tennis", "Aquatic games", "Arcade classics", "Arch rivals",
+            "Ariel the little mermaid", "Arrow flash", "Art alive", "Atomic runner", "Ball jacks",
+            "Ball z", "Batman forever", "Batman returns", "Batman", "Battle squadron", "Battletoads",
+            "Beavis and butthead", "Biohazard battle (Zoné jap, se lance en 60hz+us)", "Blade of vengeance",
+            "Blockout", "Bloodshot (Zoné sur jap uniquement)", "Bob", "Bonanza bros", "Bonkers",
+            "Brian lara cricket: (Bugué en 60 hz)", "Bubsy 2", "Bubsy", "Buck rogers", "Budokan",
+            "Bulls versus blazers and the nba playoff", "Burning force", "California games", "Cannon fodder",
+            "Captain america and the avenger", "Captain planet and the planeteers", "Centurion defender of rome",
+            "Chakan", "Champions world class soccer", "Chiki chiki boy", "Chuck rock 2", "Chuck rock",
+            "Cliffhanger", "Combat cars", "Corporation", "Cosmic spacehead", "Crackdown", "Crash dummies",
+            "Crue ball", "Cutthroat island", "Cyberball", "Cyborg justice", "Daffy duck in hollywood",
+            "Dark castle", "David robinson supreme courtdavis cup world tour", "Decap attack", "Demolition man",
+            "Desert demolition", "Desert strike", "Dick tracy", "Disney collection: castle of illusion+quackshot",
+            "Double clutch", "Double dragon 3", "Double dragon", "Dracula", "Dragon ball z",
+            "Dragon's fury (Zoné jap, se lance en 60hz+us)", "Dragon's revenge", "Dune 2:battle for arakis",
+            "Dungeons and dragons warrior of the eternal sun", "Dynamite duke", "Dynamite headdy", "Ea hockey",
+            "Earthworm jim", "Earthworm jim 2 (Zoné jap, se lance en 60 hz+us)", "Ecco the dolphin", "Eswat",
+            "European soccer", "Eternal champion", "Evander holyfield's boxing", "Ex mutants", "F 15 strike eagle 2",
+            "F1 world championship edition", "F1", "Faery tale adventure", "Fantasia", "Fantastic dizzy",
+            "Fatal fury", "Fatal labyrinth", "Fatal rewind", "Ferrari grand prix challenge", "Fever pitch soccer",
+            "Fifa 97 (Zoné jap, se lance en 60 hz+us)", "Fifa international soccer", "Fifa soccer 95",
+            "Fifa soccer 96", "Fire shark", "Flashback", "Flicky", "Flink", "Forgotten worlds", "G loc air battle",
+            "Gain ground", "Galaxy force 2", "Ggauntlet 4 (Zoné jap, se lance en 60 hz+us)",
+            "Geaorge foreman ko boxing", "General chaos", "Generations lost", "Ghostbusters", "Ghouls n ghost",
+            "Gods (Zoné jap, se lance en 60hz+us)", "Golden axe 2", "Golden axe", "Grandslam", "Green dog",
+            "Gunship", "Gynoug", "Hard drivin", "Haunting", "Havoc", "Hellfire", "Herzog zwei", "Home alone",
+            "Hook", "Hurricanes", "Img international tour", "Indiana jones and the last crusade", "International rugby",
+            "International superstar soccer deluxe", "Izzy's quest for the olympic rings", "Jack niklaus power challenge",
+            "James bond 007 the duel", "James buster douglas knockout boxing", "James pond 2", "James pond 3",
+            "James pond", "Jewel master", "Jimmy white's whirlwind snooker", "Joe montana 2 sport talk football",
+            "John madden american football", "John madden football 92", "Judge dredd", "Jungle strike",
+            "Jurassic park rampage edition", "Jurassic park the lost world", "Justice league task force",
+            "Kawasaki Superbike", "Kid Chameleon", "King of the monsters (Manette 6 boutons ne fonctionne pas)",
+            "Krusty's super funhouse", "Landstalker", "Light Crusader", "Livre de la Jungle", "M1 abraham battle tank",
+            "Madden nfl 96", "Man overboard", "Marble madness", "Mario lemieux hockey", "Marko's magi football",
+            "Mazin wars (Zoné us, se lance en 60hz+jap)", "Mega bomberman", "Menacer 6 games cartridge", "Mercs",
+            "Mickey Mouse & Donald Duck : World of Illusion", "Mickey mania", "Micro machines 2", "Micro machines 96",
+            "Micro machines military", "Micro machines", "Mig 29 fighter pilot", "Might and magic", "Mortal kombat 2",
+            "Mortal kombat", "Mr nutz", "Miss pacman", "Mystic defender", "Nba action 95", "Nba all star challenge",
+            "Nba jam te", "Nba jap", "Nba live 95", "Nba live 96", "Nba live 97",
+            "Nba shodown (Zoné jap, se lance en 60 hz+us)", "Newman haas indycar featuring nigle mansell",
+            "Nfl quaterback club", "Nhl 94", "Nhl 95", "Nhl 96", "Nhl 97", "Nhlpa hockey 93",
+            "Normy's beach babe o rama", "Olympic Game", "Outrun", "Pac mania", "Paperboy 2", "Paperboy",
+            "Pelé", "Pete sampras tennis", "Pga tour golf 3", "Pga tour golf", "Phantasy star 2", "Phantasy star 3",
+            "Phelios", "Pink goes to hollywood (Zoné jap, se lance en 60hz+us)", "Pit fighter", "Pitfall",
+            "Populous", "Power drive", "Power monger", "Predator 2", "Primal rage", "Psy pinball", "Puggsy",
+            "Quackshot", "Rambo 3", "Rbi 94 baseball", "Red zone", "Revenge of shinobi", "Revolution x",
+            "Rings of power", "Rie of the robot", "Risky woods", "Ristar", "Road rash", "Road rash 2",
+            "Road rash 3", "Robocop 3", "Rocket knight aventure", "Roi lion", "Rolling thunder 2", "Rolo to the rescue",
+            "Rugby world cup 95", "Sanpras tennis 96", "Seaquest dsv", "Second samurai", "Shadow dancer",
+            "Shadow of the beast 2", "Shadow of the beast", "Shaq fu", "Shining in the darkness", "Side pocket",
+            "Skitchin", "Snake rattle n roll", "Soleil", "Sonic 3D : Flickies' Island",
+            "Sonic Compilation (Certaines cartouches)", "Sonic & Knuckles", "Sonic The Hedgehog",
+            "Sonic The Hedgehog 2", "Space harrier 2", "Spiderman animated serie", "Spiderman venom maximum carnage",
+            "Spiderman venom: separation anxiety", "Spiderman x men", "Spiderman", "Splatterhouse 2",
+            "Spot goes to hollywood (Zoné jap, se lance en 60hz+us)", "Stargate", "Steel talons", "Streets fighter2'",
+            "Street racer", "Streets of Rage", "Streets of Rage 2 (Zoné us, se lance en 60hz+jap)", "Strider",
+            "Strider 2", "Summer challenge", "Super fantasy zone", "Super hang on", "Super hydlide", "Super kick off",
+            "Super monaco gp", "Super monaco gp 2 (Zoné us, se lance en 60hz+jap)", "Super off road",
+            "Super skidmark (Bugué en 60hz)", "Super smash tv", "Super Streets fighter 2", "Super thunder blade",
+            "Sword of sodan", "Sword of vermilion", "Syndicate", "T2 terminator 2 judgement day", "T2 the arcade game",
+            "Talespin", "Talmit's adventure", "Taz in escape from mars", "Taz mania", "Team usa basketball",
+            "Techno clash", "Test drive 2 the duel", "The flintstones", "The immortal", "The incredible hulk",
+            "The lawnmower man", "The simpsons bart nightmare", "The simpsons: bart vs the space mutants",
+            "The terminator", "Theme park", "Thunderforce 2", "Titi et grosminet", "Toejam and earl", "Toki",
+            "Toughman contest", "True lies", "Truxton", "Turbo outrun", "Turrican", "Twin hawk", "Universal Soldier",
+            "Urban Strike", "Vectorman", "Virtua Fighter 2", "Virtual Bbart", "Virtual Pinball",
+            "Vr Trooper (Zoné jap, se lance en 60 hz +us)", "Warlock", "Wayne gretzky"
+        ];
+
+        const mdIncompatibleRaw = [
+            "Aaaah Real Monsters", "Adventure of Mighty Max", "Aero the Acrobat", "Aero the Acrobat 2",
+            "Aladdin", "Alien Soldier", "Animaniacs", "Art of Fighting", "Asterix and the Great Rescue",
+            "Asterix et le Pouvoir des Dieux", "ATP Tour", "Back to the Future 3", "Batman & Robin",
+            "Bloodshot (Zoné Jap)", "Bodycount", "Boogerman", "Brutal Paws of Fury", "Bubba 'n Stix",
+            "Bubble and Squeak", "Bugs Bunny in Double Trouble",
+            "Castlevania (Ne boot pas, mais fonctionne si switché en cours de partie)", "Chaos Engine",
+            "Cheese Cat Astroph (Rame en 60hz)", "Clayfighter", "Comix Zone (Rame en 60hz)", "Compli Sega Sport 1",
+            "Cool Spot", "Dino Dini Soccer (Message d'erreur une fois le mode de jeu selectionné, demarre normalement)",
+            "Donald Maui Mallard (Rame en 60hz)", "Dr Robotnik", "Dragon the Bruce Lee Story (Bugué en 60hz)",
+            "Dune 2: Battle For Arakis", "Earthworm Jim", "Ecco: Les Marrées du Temps (Bugué en 60hz)",
+            "Eternal Champions", "Exo Squad", "Fifa 98", "Fun 'n Games", "Garfield", "Global Gladiator",
+            "Greatest Heavyweights (Bugs à l'écran en 60hz)", "Gunstar Heroes", "Hyperdunk",
+            "Jimmy White's Whirlwind Snooker", "Jurassic Park",
+            "Landstalker (Ne boot pas, mais fonctionne si switché en cours de partie)", "La légende de Thor",
+            "Lemmings 2: The Tribes", "Les Schtroumfs",
+            "Light Crusader (Ne boot pas, mais fonctionne si switché en cours de partie)", "Livre de la Jungle",
+            "Marsupilami", "Mc Donald Treasure Land Adventure", "Mega Lo Mania (Buggé en 60hz)", "Mega Swin",
+            "Mega Turrican", "Outrun 2019", "Pac Panic", "Pebble Beach Golf Link", "Phantasy Star 4",
+            "Phantom 2040", "Pinocchio", "Pocahontas", "Populous 2: Two Tribes", "Power Rangers: The Movie",
+            "Power Rangers (Légers Bugs en 60hz)", "Premier Manager 97", "Prince of Persia",
+            "Probotector (Ne boot pas, mais fonctionne si switché en cours de partie)", "Punisher", "Radical Rex",
+            "Ranger X", "Robocop VS. The Terminator", "Rock 'N Roll Racing", "Rocket Knight Adventures",
+            "Samurai Showdown (Bugué en 60hz)", "Saturday Night Slammasters", "Schtroumpfs Autour du Monde",
+            "Sensible Soccer European Champions", "Shining Force", "Shining Force 2", "Shinobi 3", "Skeleton Crew",
+            "Soleil", "Sonic 3 (Rame en 60hz)", "Sonic Compilation (Selon les cartouches)", "Sonic Spinball",
+            "Sparkster", "Speedball 2", "Spirou", "Star Trek: Deep Space Nine", "Street Fighter 2",
+            "Streets of Rage 3 (Bugué en 60hz)", "Sub Terrania", "Sunset Rider", "Super Street Fighter 2",
+            "Superman: The Man of Steel", "The Lost Vinkings", "The Ooze", "The Ottifants", "The Pagemaster",
+            "The Ren and Stimpy Show (Bugué en 60hz)", "Thunderforce 4 (Ralentissements en 60hz)", "Tintin au Tibet",
+            "Tiny Toons Acme All Stars", "Tiny Toons Adventure Buster Hidden Treasure",
+            "Toe Jam & Earl: Panic on Funkotron (Bugué en 60hz)", "Total Football", "Toy Story",
+            "Turtles Hyperstone Heist", "Turtles Tournament Fighter (Rame en 60hz)", "Ultimate Mortal Kombat 3",
+            "Ultimate Soccer", "Virtual Racing", "Wimbledon", "Worms", "X-men", "Xenon 2 Megablast",
+            "Zero the Kamikaze Squirrel", "Zombies", "Zool", "Zoop"
+        ];
+
+        const getMatchInfo = (list, title) => {
+            const normInput = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (let item of list) {
+                const match = item.match(/(.*?)(?:\((.*)\))?$/);
+                const rawName = match[1].trim();
+                const note = match[2] ? match[2].trim() : null;
+                const normList = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                
+                if (normList === normInput || 
+                    (normList.length > 5 && normInput.includes(normList)) || 
+                    (normInput.length > 5 && normList.includes(normInput))) {
+                    return { found: true, note };
+                }
+            }
+            return { found: false };
+        };
+
+        const getMegadriveCompatibility = (title) => {
+            if (!title) return { status: 'unknown', note: null };
+            
+            // On vérifie d'abord les incompatibles car ils contiennent souvent des infos plus spécifiques (ex: bugs mineurs)
+            const incomp = getMatchInfo(mdIncompatibleRaw, title);
+            if (incomp.found) return { status: 'incompatible', note: incomp.note || 'Incompatible 60Hz' };
+            
+            const comp = getMatchInfo(mdCompatibleRaw, title);
+            if (comp.found) return { status: 'compatible', note: comp.note || 'Compatible 60Hz' };
+            
+            return { status: 'unknown', note: null };
+        };
+
+        const App = () => {
+            // Initialisation avec vérification de la sauvegarde locale
+            const [games, setGames] = React.useState(() => {
+                const savedGames = localStorage.getItem('retroTrackerData');
+                if (savedGames) {
+                    try {
+                        return JSON.parse(savedGames);
+                    } catch (e) {
+                        console.error("Erreur de lecture de la sauvegarde", e);
+                        return initialGames;
+                    }
+                }
+                return initialGames;
+            });
+
+            const [isCloudConnected, setIsCloudConnected] = React.useState(false);
+            const [userId, setUserId] = React.useState(null);
+            const [userEmail, setUserEmail] = React.useState(null);
+            const [syncStatus, setSyncStatus] = React.useState('idle'); // 'idle' | 'syncing' | 'saved' | 'error'
+            const [showAuthModal, setShowAuthModal] = React.useState(false);
+            const [authError, setAuthError] = React.useState(null);
+            const [isAuthLoading, setIsAuthLoading] = React.useState(false);
+            const [syncCode, setSyncCode] = React.useState(() => localStorage.getItem('retroTrackerSyncCode') || null);
+            const [inputSyncCode, setInputSyncCode] = React.useState("");
+            
+            // Nouveaux états pour le partage par URL & Code Texte
+            const [copiedMessage, setCopiedMessage] = React.useState(null);
+            const [textCodeInput, setTextCodeInput] = React.useState("");
+
+            // Détection automatique d'une collection dans l'URL (#data=...)
+            React.useEffect(() => {
+                try {
+                    const hash = window.location.hash;
+                    if (hash && hash.startsWith('#data=')) {
+                        const encodedData = hash.replace('#data=', '');
+                        const jsonString = decodeURIComponent(atob(encodedData));
+                        const importedGames = JSON.parse(jsonString);
+                        if (Array.isArray(importedGames) && importedGames.length > 0) {
+                            if (window.confirm(`Une collection de ${importedGames.length} jeux a été détectée dans ce lien ! Voulez-vous l'importer ?`)) {
+                                setGames(importedGames);
+                                localStorage.setItem('retroTrackerData', JSON.stringify(importedGames));
+                                window.history.replaceState(null, null, ' ');
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erreur de décodage de l'URL:", e);
+                }
+            }, []);
+
+            // Initialisation et écoute de la base de données Cloud
+            React.useEffect(() => {
+                let unsubscribeDoc = null;
+                let unsubscribeAuth = null;
+
+                async function initCloud() {
+                    if (!window.CloudSync) {
+                        console.log("Mode local uniquement (Configuration Cloud non détectée)");
+                        return;
+                    }
+                    const { auth, signInWithCustomToken, signInAnonymously, db, doc, setDoc, onSnapshot, onAuthStateChanged, appId } = window.CloudSync;
+                    
+                    // Écouteur de changement d'état d'authentification
+                    unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+                        if (unsubscribeDoc) {
+                            unsubscribeDoc();
+                            unsubscribeDoc = null;
+                        }
+
+                        if (!user) {
+                            try {
+                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                    await signInWithCustomToken(auth, __initial_auth_token);
+                                } else {
+                                    await signInAnonymously(auth);
+                                }
+                            } catch (err) {
+                                console.warn("Erreur auto-login anonyme:", err);
+                            }
+                            return;
+                        }
+
+                        setUserId(user.uid);
+                        setUserEmail(user.email || null);
+                        setIsCloudConnected(true);
+
+                        // Détermination de la référence du document selon la règle stricte des chemins
+                        const docRef = syncCode 
+                            ? doc(db, 'artifacts', appId, 'public', 'data', 'sharedCollections', syncCode)
+                            : doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'gamesCollection');
+
+                        unsubscribeDoc = onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const cloudData = docSnap.data();
+                                if (cloudData && Array.isArray(cloudData.games)) {
+                                    setGames(cloudData.games);
+                                    localStorage.setItem('retroTrackerData', JSON.stringify(cloudData.games));
+                                    setSyncStatus('saved');
+                                    setTimeout(() => setSyncStatus('idle'), 2000);
+                                }
+                            } else {
+                                // Première création pour ce code : transmission des données locales actuelles
+                                const currentGames = JSON.parse(localStorage.getItem('retroTrackerData')) || games;
+                                setDoc(docRef, { games: currentGames, lastUpdated: Date.now() });
+                            }
+                        }, (error) => {
+                            console.error("Erreur d'écoute Cloud:", error);
+                            setSyncStatus('error');
+                        });
+                    });
+                }
+
+                initCloud();
+
+                return () => {
+                    if (unsubscribeDoc) unsubscribeDoc();
+                    if (unsubscribeAuth) unsubscribeAuth();
+                };
+            }, [syncCode]);
+
+            const handleGoogleSignIn = async () => {
+                if (!window.CloudSync) return;
+                const { auth, GoogleAuthProvider, signInWithPopup } = window.CloudSync;
+                setIsAuthLoading(true);
+                setAuthError(null);
+
+                try {
+                    const provider = new GoogleAuthProvider();
+                    await signInWithPopup(auth, provider);
+                    setShowAuthModal(false);
+                } catch (err) {
+                    console.error("Erreur connexion Google:", err);
+                    if (err.code === 'auth/unauthorized-domain') {
+                        setAuthError("Ce domaine web n'est pas autorisé dans Firebase. Utilisez les options Lien Magique ou Code Secret ci-dessus pour accéder à vos données partout sans restriction !");
+                    } else if (err.code === 'auth/popup-blocked') {
+                        setAuthError("La fenêtre surgissante a été bloquée par votre navigateur.");
+                    } else {
+                        setAuthError("Erreur de connexion : " + (err.message || "Impossible de se connecter"));
+                    }
+                } finally {
+                    setIsAuthLoading(false);
+                }
+            };
+
+            const handleEnableSyncCode = (e) => {
+                e.preventDefault();
+                const cleanCode = inputSyncCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!cleanCode) return;
+                localStorage.setItem('retroTrackerSyncCode', cleanCode);
+                setSyncCode(cleanCode);
+                setInputSyncCode("");
+                setShowAuthModal(false);
+            };
+
+            const handleDisableSyncCode = () => {
+                localStorage.removeItem('retroTrackerSyncCode');
+                setSyncCode(null);
+            };
+
+            // ---- Fonctions de Partage par Lien & Code Texte ----
+            const generateShareableLink = () => {
+                try {
+                    const jsonString = JSON.stringify(games);
+                    const encodedData = btoa(encodeURIComponent(jsonString));
+                    const baseUrl = window.location.href.split('#')[0];
+                    const fullUrl = `${baseUrl}#data=${encodedData}`;
+                    
+                    // Copie dans le presse-papier
+                    const tempInput = document.createElement('input');
+                    tempInput.value = fullUrl;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+
+                    setCopiedMessage("Lien magique copié dans le presse-papier ! Envoyez-le sur votre autre appareil.");
+                    setTimeout(() => setCopiedMessage(null), 4000);
+                } catch (err) {
+                    alert("Erreur lors de la génération du lien : La collection est peut-être très volumineuse.");
+                }
+            };
+
+            const generateTextCode = () => {
+                try {
+                    const jsonString = JSON.stringify(games);
+                    const encodedData = btoa(encodeURIComponent(jsonString));
+                    
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = encodedData;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+
+                    setCopiedMessage("Code Texte copié ! Collez-le dans l'application sur votre autre appareil.");
+                    setTimeout(() => setCopiedMessage(null), 4000);
+                } catch (err) {
+                    alert("Erreur lors de la génération du code.");
+                }
+            };
+
+            const handleImportTextCode = (e) => {
+                e.preventDefault();
+                if (!textCodeInput.trim()) return;
+                try {
+                    const jsonString = decodeURIComponent(atob(textCodeInput.trim()));
+                    const importedGames = JSON.parse(jsonString);
+                    if (Array.isArray(importedGames)) {
+                        if (window.confirm(`Remplacer votre liste par ces ${importedGames.length} jeux ?`)) {
+                            saveGamesData(importedGames);
+                            setTextCodeInput("");
+                            setShowAuthModal(false);
+                            alert("Collection importée avec succès !");
+                        }
+                    } else {
+                        alert("Code invalide.");
+                    }
+                } catch (err) {
+                    alert("Format de code invalide.");
+                }
+            };
+
+            const handleSignOut = async () => {
+                if (!window.CloudSync) return;
+                const { auth, signOut, signInAnonymously } = window.CloudSync;
+                try {
+                    handleDisableSyncCode();
+                    await signOut(auth);
+                    await signInAnonymously(auth);
+                    setUserEmail(null);
+                } catch (err) {
+                    console.error("Erreur déconnexion:", err);
+                }
+            };
+
+            // Sauvegarde automatique distante et locale
+            const saveGamesData = (updatedGames) => {
+                setGames(updatedGames);
+                localStorage.setItem('retroTrackerData', JSON.stringify(updatedGames));
+
+                if (window.CloudSync && (userId || syncCode)) {
+                    setSyncStatus('syncing');
+                    const { db, doc, setDoc, appId } = window.CloudSync;
+                    const docRef = syncCode
+                        ? doc(db, 'artifacts', appId, 'public', 'data', 'sharedCollections', syncCode)
+                        : doc(db, 'artifacts', appId, 'users', userId, 'data', 'gamesCollection');
+
+                    setDoc(docRef, { games: updatedGames, lastUpdated: Date.now() })
+                        .then(() => {
+                            setSyncStatus('saved');
+                            setTimeout(() => setSyncStatus('idle'), 2000);
+                        })
+                        .catch((err) => {
+                            console.error("Erreur de sauvegarde Cloud:", err);
+                            setSyncStatus('error');
+                        });
+                }
+            };
+
+            const [activeConsole, setActiveConsole] = React.useState("Toutes");
+            const [searchQuery, setSearchQuery] = React.useState("");
+            const [showAddForm, setShowAddForm] = React.useState(false);
+            const [sortMode, setSortMode] = React.useState("alpha");
+            
+            // Form State
+            const [newTitle, setNewTitle] = React.useState("");
+            const [newConsole, setNewConsole] = React.useState("Megadrive");
+            const [newStatus, setNewStatus] = React.useState("wanted");
+            const [newImg, setNewImg] = React.useState("");
+            const [newRegion, setNewRegion] = React.useState("PAL");
+            const [editingId, setEditingId] = React.useState(null);
+
+            const toggleGameStatus = (id) => {
+                const targetGame = games.find(game => game.id === id);
+                if (!targetGame) return;
+                
+                const updatedGame = { ...targetGame, status: targetGame.status === "owned" ? "wanted" : "owned" };
+                const otherGames = games.filter(game => game.id !== id);
+                saveGamesData([updatedGame, ...otherGames]);
+            };
+
+            const deleteGame = (id) => {
+                saveGamesData(games.filter(game => game.id !== id));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!newTitle.trim()) return;
+                
+                let updatedList;
+                if (editingId) {
+                    updatedList = games.map(g => g.id === editingId ? {
+                        ...g, title: newTitle, console: newConsole, status: newStatus, region: newRegion, img: newImg
+                    } : g);
+                    setEditingId(null);
+                } else {
+                    const newGame = {
+                        id: Date.now(),
+                        title: newTitle,
+                        console: newConsole,
+                        status: newStatus,
+                        region: newRegion,
+                        img: newImg
+                    };
+                    updatedList = [newGame, ...games];
+                }
+                
+                saveGamesData(updatedList);
+                setNewTitle("");
+                setNewImg("");
+                setShowAddForm(false);
+            };
+
+            const handleEdit = (game) => {
+                setNewTitle(game.title);
+                setNewConsole(game.console);
+                setNewRegion(game.region);
+                setNewStatus(game.status);
+                setNewImg(game.img || "");
+                setEditingId(game.id);
+                setShowAddForm(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const handleToggleForm = () => {
+                if (showAddForm) {
+                    setEditingId(null);
+                    setNewTitle("");
+                    setNewImg("");
+                }
+                setShowAddForm(!showAddForm);
+            };
+
+            // ---- Fonction d'Importation ----
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    try {
+                        const data = JSON.parse(content);
+                        if (Array.isArray(data)) {
+                            if(window.confirm("Remplacer votre collection actuelle par ce fichier ?")) {
+                                saveGamesData(data);
+                            }
+                            return;
+                        }
+                    } catch (err) {
+                        const match = content.match(/const initialGames = (\[[\s\S]*?\]);\s*const CONSOLES/);
+                        if (match && match[1]) {
+                            try {
+                                const extractedGames = JSON.parse(match[1]);
+                                if (Array.isArray(extractedGames)) {
+                                    if(window.confirm("Importer la collection contenue dans ce fichier HTML ? Cela remplacera la vôtre.")) {
+                                        saveGamesData(extractedGames);
+                                    }
+                                    return;
+                                }
+                            } catch (e2) {
+                                console.error(e2);
+                            }
+                        }
+                        alert("Erreur : Impossible de lire les données. Assurez-vous d'utiliser un fichier de sauvegarde valide.");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = null;
+            };
+
+            // ---- Fonction d'Exportation de données (JSON) ----
+            const exportJSON = () => {
+                try {
+                    const dataStr = JSON.stringify(games, null, 2);
+                    const blob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'sauvegarde_collection.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error("Erreur d'export:", error);
+                    alert("Une erreur s'est produite lors de la sauvegarde des données.");
+                }
+            };
+
+            // ---- Fonction d'Exportation HTML complet ----
+            const exportHTML = () => {
+                try {
+                    const scriptNode = document.querySelector('script[type="text/babel"]');
+                    if (!scriptNode) return;
+                    
+                    let scriptContent = scriptNode.textContent;
+                    const gamesJSON = JSON.stringify(games, null, 12);
+                    
+                    scriptContent = scriptContent.replace(/const initialGames = [\s\S]*?\];\s*const CONSOLES/, `const initialGames = ${gamesJSON};\n\n        const CONSOLES`);
+
+                    const styleContent = document.querySelector('style') ? document.querySelector('style').textContent : '';
+
+                    const fullHTML = `<!DOCTYPE html>\n<html lang="fr">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>RetroCollec Online</title>\n    <script src="https://cdn.tailwindcss.com"><\/script>\n    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>\n    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>\n    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>\n    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">\n    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">\n    <style>${styleContent}<\/style>\n</head>\n<body class="crt min-h-screen">\n    <div id="root"></div>\n    <script type="text/babel">${scriptContent}<\/script>\n</body>\n<\/html>`;
+
+                    const blob = new Blob([fullHTML], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'retrocollec_online.html';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error("Erreur d'export HTML:", error);
+                    alert("Une erreur s'est produite lors de la génération du fichier HTML.");
+                }
+            };
+
+            const filteredGames = games.filter(g => {
+                const matchesConsole = activeConsole === "Toutes" || g.console === activeConsole;
+                const matchesSearch = g.title.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesConsole && matchesSearch;
+            });
+
+            const sortedGames = [...filteredGames].sort((a, b) => {
+                if (sortMode === "alpha") {
+                    return a.title.localeCompare(b.title);
+                }
+                return b.id - a.id;
+            });
+
+            const ownedGames = sortedGames.filter(g => g.status === "owned");
+            const wantedGames = sortedGames.filter(g => g.status === "wanted");
+
+            return (
+                <div className="container mx-auto px-4 py-6 max-w-7xl relative z-10 font-terminal">
+                    {/* Header */}
+                    <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-purple-900/50 pb-6">
+                        <div>
+                            <h1 className="font-pixel text-2xl sm:text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 font-bold mb-2">
+                                RETROCOLLEC ONLINE
+                            </h1>
+                            <p className="text-gray-400 text-lg sm:text-xl">Gestionnaire de Collection Retrogaming</p>
+                        </div>
+
+                        {/* Badge de statut Cloud Sync & Bouton Google Auth / Code */}
+                        <div className="inline-flex flex-wrap items-center justify-center gap-3 bg-gray-900/90 border border-purple-500/50 px-4 py-2 rounded-2xl text-xs font-pixel shadow-lg">
+                            <div className="flex items-center gap-2">
+                                {isCloudConnected ? (
+                                    <>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+                                        <span className="text-green-300">SYNCHRO ACTIVE</span>
+                                        {syncStatus === 'syncing' && <span className="text-yellow-400 text-[9px] ml-1">(Envoi...)</span>}
+                                        {syncStatus === 'saved' && <span className="text-blue-300 text-[9px] ml-1">(OK ✓)</span>}
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                        <span className="text-yellow-300">LOCAL</span>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="h-4 w-px bg-purple-500/40 hidden sm:block"></div>
+
+                            {/* Section Compte ou Code de Synchro */}
+                            {syncCode ? (
+                                <div className="flex items-center gap-2 bg-blue-950/80 border border-blue-400/50 px-3 py-1 rounded-xl">
+                                    <i className="fas fa-key text-yellow-400"></i>
+                                    <span className="text-blue-200 text-[9px] sm:text-[10px] font-terminal text-lg tracking-wide">CODE: {syncCode.toUpperCase()}</span>
+                                    <button 
+                                        onClick={handleDisableSyncCode}
+                                        className="ml-2 text-gray-400 hover:text-red-400 text-xs transition-colors"
+                                        title="Déconnecter ce code"
+                                    >
+                                        <i className="fas fa-sign-out-alt"></i>
+                                    </button>
+                                </div>
+                            ) : userEmail ? (
+                                <div className="flex items-center gap-2 bg-purple-950/80 border border-purple-400/50 px-3 py-1 rounded-xl">
+                                    <i className="fab fa-google text-red-400"></i>
+                                    <span className="text-purple-200 text-[9px] sm:text-[10px] font-terminal text-lg tracking-wide">{userEmail}</span>
+                                    <button 
+                                        onClick={handleSignOut}
+                                        className="ml-2 text-gray-400 hover:text-red-400 text-xs transition-colors"
+                                        title="Se déconnecter"
+                                    >
+                                        <i className="fas fa-sign-out-alt"></i>
+                                    </button>
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={() => setShowAuthModal(true)}
+                                    className="bg-pink-600/90 hover:bg-pink-500 text-white text-[9px] px-3 py-1 rounded-xl flex items-center gap-2 transition-all shadow-[0_0_10px_rgba(236,72,153,0.4)]"
+                                >
+                                    <i className="fas fa-mobile-alt"></i>
+                                    <span>Accéder partout / Synchroniser</span>
+                                </button>
+                            )}
+                        </div>
+                    </header>
+
+                    {/* Modal d'Accès Multi-Appareils (Lien, Code & Cloud) */}
+                    {showAuthModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+                            <div className="bg-gray-900 border-2 border-pink-500 p-6 rounded-lg max-w-lg w-full shadow-[0_0_30px_rgba(236,72,153,0.4)] relative max-h-[90vh] overflow-y-auto custom-scrollbar-mini">
+                                <button 
+                                    onClick={() => setShowAuthModal(false)}
+                                    className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+
+                                <div className="text-center mb-6">
+                                    <div className="w-12 h-12 rounded-full bg-pink-500/20 border border-pink-500 flex items-center justify-center mx-auto mb-3 text-pink-400 text-2xl">
+                                        <i className="fas fa-share-alt"></i>
+                                    </div>
+                                    <h3 className="font-pixel text-lg text-white mb-2">Accéder à ma collection partout</h3>
+                                    <p className="font-terminal text-xl text-gray-300">
+                                        Choisissez la méthode la plus pratique pour vous :
+                                    </p>
+                                </div>
+
+                                {copiedMessage && (
+                                    <div className="mb-6 p-3 bg-green-950/90 border border-green-500 rounded text-green-200 font-terminal text-lg text-center animate-bounce">
+                                        <i className="fas fa-check-circle mr-2 text-green-400"></i>
+                                        {copiedMessage}
+                                    </div>
+                                )}
+
+                                {authError && (
+                                    <div className="mb-6 p-3 bg-red-950/90 border border-red-500 rounded text-red-200 font-terminal text-lg leading-snug">
+                                        <i className="fas fa-exclamation-triangle text-yellow-400 mr-2"></i>
+                                        {authError}
+                                    </div>
+                                )}
+
+                                <div className="space-y-5">
+                                    {/* METHODE 1 : Lien Magique (100% garanti) */}
+                                    <div className="bg-gray-800/90 border border-purple-500/60 p-4 rounded-lg">
+                                        <h4 className="font-pixel text-xs text-purple-300 mb-2 flex items-center gap-2">
+                                            <i className="fas fa-link text-yellow-400"></i>
+                                            <span>Méthode 1 : Le Lien Magique (Instant)</span>
+                                        </h4>
+                                        <p className="font-terminal text-lg text-gray-300 mb-3">
+                                            Génère un lien direct contenant votre collection. Envoyez-le-vous par WhatsApp ou Mail et ouvrez-le sur votre téléphone ou autre PC !
+                                        </p>
+                                        <button 
+                                            onClick={generateShareableLink}
+                                            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded transition-colors uppercase shadow-md flex items-center justify-center gap-2"
+                                        >
+                                            <i className="fas fa-copy"></i>
+                                            <span>Générer & Copier le lien magique</span>
+                                        </button>
+                                    </div>
+
+                                    {/* METHODE 2 : Code PIN / Pseudo Cloud */}
+                                    <div className="bg-gray-800/90 border border-blue-500/60 p-4 rounded-lg">
+                                        <h4 className="font-pixel text-xs text-blue-300 mb-2 flex items-center gap-2">
+                                            <i className="fas fa-key text-yellow-400"></i>
+                                            <span>Méthode 2 : Code PIN / Pseudo Cloud</span>
+                                        </h4>
+                                        <p className="font-terminal text-lg text-gray-300 mb-3">
+                                            Créez un mot de passe ou un pseudo (ex: <code className="text-pink-400">retrogamer88</code>). Entrez le même code sur tous vos appareils pour tout synchroniser.
+                                        </p>
+                                        <form onSubmit={handleEnableSyncCode} className="space-y-2">
+                                            <input 
+                                                type="text" 
+                                                required
+                                                placeholder="ex: retrogamer88" 
+                                                value={inputSyncCode} 
+                                                onChange={(e) => setInputSyncCode(e.target.value)}
+                                                className="w-full bg-black border border-blue-500 text-white p-2 rounded font-terminal text-xl focus:outline-none focus:border-pink-500"
+                                            />
+                                            <button 
+                                                type="submit"
+                                                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded transition-colors uppercase shadow-md"
+                                            >
+                                                Activer la synchronisation par ce code
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    {/* METHODE 3 : Copier / Coller de Code Texte */}
+                                    <div className="bg-gray-800/90 border border-gray-700 p-4 rounded-lg">
+                                        <h4 className="font-pixel text-xs text-gray-300 mb-2 flex items-center gap-2">
+                                            <i className="fas fa-paste text-pink-400"></i>
+                                            <span>Méthode 3 : Code Texte (Copier / Coller)</span>
+                                        </h4>
+                                        <div className="flex gap-2 mb-3">
+                                            <button 
+                                                onClick={generateTextCode}
+                                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-pixel text-[9px] py-2 px-3 rounded transition-colors"
+                                            >
+                                                Copier le code de ma liste
+                                            </button>
+                                        </div>
+                                        <form onSubmit={handleImportTextCode} className="space-y-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Collez le code texte ici pour importer..." 
+                                                value={textCodeInput} 
+                                                onChange={(e) => setTextCodeInput(e.target.value)}
+                                                className="w-full bg-black border border-gray-600 text-white p-2 rounded font-terminal text-lg focus:outline-none focus:border-pink-500"
+                                            />
+                                            <button 
+                                                type="submit"
+                                                className="w-full bg-pink-600 hover:bg-pink-500 text-white font-pixel text-[9px] py-2 px-3 rounded transition-colors uppercase"
+                                            >
+                                                Importer ce code texte
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Controls (Search, Add, Tabs) */}
+                    <div className="mb-8 space-y-6">
+                        
+                        {/* Console Tabs */}
+                        <div className="flex flex-wrap justify-center gap-2 mb-6">
+                            {CONSOLES.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => setActiveConsole(c)}
+                                    className={`font-pixel text-[10px] sm:text-xs py-2 px-4 uppercase transition-all ${activeConsole === c ? 'bg-purple-600 text-white neon-border-blue' : 'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700'}`}
+                                >
+                                    {c}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            {/* Search */}
+                            <div className="relative w-full md:flex-1">
+                                <i className="fas fa-search absolute left-3 top-3 text-blue-400"></i>
+                                <input 
+                                    type="text" 
+                                    placeholder="Rechercher un jeu..." 
+                                    className="w-full bg-gray-900 border-2 border-blue-500 text-blue-300 rounded-none py-2 pl-10 pr-4 font-terminal text-xl focus:outline-none focus:border-pink-500 transition-colors"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Sort Dropdown */}
+                            <div className="relative w-full md:w-48">
+                                <i className="fas fa-sort absolute left-3 top-3 text-pink-400"></i>
+                                <select 
+                                    value={sortMode}
+                                    onChange={(e) => setSortMode(e.target.value)}
+                                    className="w-full bg-gray-900 border-2 border-pink-500 text-pink-300 rounded-none py-2 pl-10 pr-4 font-terminal text-xl focus:outline-none focus:border-blue-500 transition-colors appearance-none cursor-pointer"
+                                >
+                                    <option value="ajout">Tri : Ajout</option>
+                                    <option value="alpha">Tri : A - Z</option>
+                                </select>
+                            </div>
+                            
+                            {/* Actions Buttons (Add, Export & Import) */}
+                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto flex-wrap justify-end">
+                                <button 
+                                    onClick={handleToggleForm}
+                                    className="w-full sm:w-auto bg-pink-600 hover:bg-pink-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-pink uppercase transition-all whitespace-nowrap"
+                                >
+                                    <i className={`fas ${showAddForm ? 'fa-times' : (editingId ? 'fa-edit' : 'fa-plus')} mr-1`}></i>
+                                    {showAddForm ? 'Fermer' : (editingId ? 'Modifier' : 'Ajouter un jeu')}
+                                </button>
+                                
+                                <button 
+                                    onClick={exportJSON}
+                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-blue uppercase transition-all whitespace-nowrap"
+                                    title="Télécharger une sauvegarde de votre liste (Fichier JSON/Texte)"
+                                >
+                                    <i className="fas fa-file-export mr-1"></i> JSON
+                                </button>
+
+                                <button 
+                                    onClick={exportHTML}
+                                    className="w-full sm:w-auto bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-blue uppercase transition-all whitespace-nowrap"
+                                    title="Télécharger une copie de l'application avec vos données (Fichier HTML)"
+                                >
+                                    <i className="fas fa-file-export mr-1"></i> HTML
+                                </button>
+
+                                <input 
+                                    type="file" 
+                                    id="importFile" 
+                                    accept=".json,.txt,.html" 
+                                    style={{display: 'none'}} 
+                                    onChange={handleImport} 
+                                />
+                                <button 
+                                    onClick={() => document.getElementById('importFile').click()}
+                                    className="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-blue uppercase transition-all whitespace-nowrap"
+                                    title="Restaurer une sauvegarde depuis un fichier"
+                                >
+                                    <i className="fas fa-file-import mr-1"></i> Importer
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Add Game Form */}
+                        {showAddForm && (
+                            <form onSubmit={handleSubmit} className="bg-gray-900 border-2 border-purple-500 p-6 shadow-[0_0_15px_#8a2be2] mb-8 animate-[fadeIn_0.3s_ease-out]">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                                    <div className="lg:col-span-2 relative">
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Titre du jeu</label>
+                                        <input required type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:border-pink-500 focus:outline-none"/>
+                                        {newConsole === "Megadrive" && newTitle && (
+                                            <div className="absolute top-[102%] left-0 text-[10px] font-pixel z-10 p-1 bg-black border border-gray-700 rounded w-full">
+                                                {(() => {
+                                                    const info = getMegadriveCompatibility(newTitle);
+                                                    if (info.status === 'compatible') return <span className="text-green-400">✓ {info.note}</span>;
+                                                    if (info.status === 'incompatible') return <span className="text-red-400">⚠ {info.note}</span>;
+                                                    return <span className="text-gray-500">Statut 60Hz inconnu</span>;
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Console</label>
+                                        <select value={newConsole} onChange={(e) => setNewConsole(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
+                                            <option>Megadrive</option>
+                                            <option>Super Famicom</option>
+                                            <option>Master System</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Région</label>
+                                        <select value={newRegion} onChange={(e) => setNewRegion(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
+                                            <option value="PAL">PAL</option>
+                                            <option value="US">US</option>
+                                            <option value="JAP">JAP</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Statut</label>
+                                        <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
+                                            <option value="wanted">Recherchés</option>
+                                            <option value="owned">Possédé</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[10px] py-3 px-4 neon-border-blue h-[46px]">
+                                            {editingId ? 'MODIFIER' : 'AJOUTER'}
+                                        </button>
+                                    </div>
+                                    <div className="lg:col-span-6">
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">URL Image (Optionnel)</label>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            <input 
+                                                type="text" 
+                                                value={newImg} 
+                                                onChange={(e) => setNewImg(e.target.value)} 
+                                                className="flex-1 bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:border-pink-500 focus:outline-none" 
+                                                placeholder="Laissez vide pour une recherche automatique, ou collez une URL..."
+                                            />
+                                            {newTitle && (
+                                                <a 
+                                                    href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(newTitle + ' ' + newConsole + ' ' + newRegion + ' cover box art')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[10px] py-2 px-4 flex items-center justify-center neon-border-blue transition-colors uppercase whitespace-nowrap"
+                                                    title={`Chercher la jaquette ${newRegion} sur Google Images`}
+                                                >
+                                                    <i className="fas fa-search mr-2"></i> Trouver l'image
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
+            
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* COLUMN: OWNED GAMES */}
+                            <div className="bg-[#0a0a1a] border border-blue-900 rounded-xl p-4 md:p-6 shadow-[inset_0_0_50px_rgba(0,240,255,0.05)] h-full">
+                                <h2 className="font-pixel text-xl md:text-2xl mb-6 text-center neon-text-blue border-b-2 border-blue-900 pb-4">
+                                    <i className="fas fa-star text-yellow-400 mr-3"></i>
+                                    MA COLLECTION ({ownedGames.length})
+                                </h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {ownedGames.map(game => <GameCard key={game.id} game={game} toggleStatus={toggleGameStatus} onDelete={deleteGame} onEdit={handleEdit} />)}
+                                    {ownedGames.length === 0 && <p className="col-span-full text-center font-terminal text-xl text-gray-500 mt-10">Aucun jeu possédé ici...</p>}
+                                </div>
+                            </div>
+
+                            {/* COLUMN: WANTED GAMES */}
+                            <div className="bg-[#1a0a10] border border-pink-900 rounded-xl p-4 md:p-6 shadow-[inset_0_0_50px_rgba(255,0,127,0.05)] h-full">
+                                <h2 className="font-pixel text-xl md:text-2xl mb-6 text-center neon-text-pink border-b-2 border-pink-900 pb-4">
+                                    <i className="fas fa-crosshairs text-red-500 mr-3"></i>
+                                    RECHERCHÉS ({wantedGames.length})
+                                </h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {wantedGames.map(game => <GameCard key={game.id} game={game} toggleStatus={toggleGameStatus} onDelete={deleteGame} onEdit={handleEdit} />)}
+                                    {wantedGames.length === 0 && <p className="col-span-full text-center font-terminal text-xl text-gray-500 mt-10">Liste de recherche vide !</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
+        const GameCard = ({ game, toggleStatus, onDelete, onEdit }) => {
+            const isOwned = game.status === "owned";
+            
+            // Console visual identification
+            let consoleColor = "text-gray-400";
+            if (game.console === "Megadrive") consoleColor = "text-red-500";
+            if (game.console === "Super Famicom") consoleColor = "text-yellow-400";
+            if (game.console === "Master System") consoleColor = "text-blue-400";
+
+            // Region Color Mapping
+            const getRegionColorClass = (region) => {
+                if (region === 'PAL') return 'bg-blue-900 text-blue-300 border border-blue-500';
+                if (region === 'US') return 'bg-purple-900 text-purple-300 border border-purple-500';
+                if (region === 'JAP') return 'bg-red-900 text-red-300 border border-red-500';
+                return 'bg-gray-800 text-gray-300 border border-gray-500';
+            };
+
+            // AUTO-JAQUETTE: Astuce de hacker utilisant le moteur de miniatures ouvert de Bing
+            const autoCoverUrl = `https://tse2.mm.bing.net/th?q=${encodeURIComponent(game.title + ' ' + game.console + ' game box art cover')}`;
+            
+            // State pour gérer l'affichage de l'image (fournie par l'utilisateur OU auto-générée)
+            const [imgSrc, setImgSrc] = React.useState(game.img || autoCoverUrl);
+
+            // Mettre à jour l'image si la donnée du jeu change
+            React.useEffect(() => {
+                setImgSrc(game.img || autoCoverUrl);
+            }, [game.img, autoCoverUrl]);
+
+            return (
+                <div className={`game-card relative bg-black flex flex-col h-full rounded-md overflow-hidden ${isOwned ? 'border border-blue-700 hover:border-blue-400' : 'border border-pink-700 hover:border-pink-400'}`}>
+                    
+                    {/* Top Left Badges: Region and Hz Compatibility */}
+                    <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start">
+                        {/* Region Badge */}
+                        {game.region && (
+                            <div className={`px-2 py-1 font-pixel text-[8px] rounded ${getRegionColorClass(game.region)}`}>
+                                {game.region}
+                            </div>
+                        )}
+
+                        {/* Hz Compatibility Badge (Megadrive only) */}
+                        {(() => {
+                            if (game.console === "Megadrive") {
+                                const compInfo = getMegadriveCompatibility(game.title);
+                                if (compInfo.status !== 'unknown') {
+                                    const isComp = compInfo.status === 'compatible';
+                                    return (
+                                        <div 
+                                            className={`px-2 py-1 font-pixel text-[8px] rounded cursor-help flex flex-col items-start shadow-md ${isComp ? 'bg-green-900 text-green-300 border border-green-500' : 'bg-orange-900 text-orange-300 border border-orange-500'}`}
+                                            title={compInfo.note}
+                                        >
+                                            <span>{isComp ? '60Hz OK' : '60Hz BUG'}</span>
+                                            {compInfo.note && compInfo.note !== 'Compatible 60Hz' && compInfo.note !== 'Incompatible 60Hz' && (
+                                                <span className="text-[6px] opacity-80 mt-1 max-w-[100px] truncate">{compInfo.note}</span>
+                                            )}
+                                        </div>
+                                    );
+                                }
+                            }
+                            return null;
+                        })()}
+                    </div>
+
+                    <button 
+                        onClick={() => onEdit(game)}
+                        className="absolute top-2 right-2 z-20 text-blue-400 opacity-70 hover:opacity-100 hover:text-blue-300 focus:opacity-100 transition-opacity bg-black/80 hover:bg-black rounded-full w-7 h-7 flex items-center justify-center text-sm border border-blue-900 hover:border-blue-500"
+                        title="Actualiser/Modifier ce jeu"
+                    >
+                        <i className="fas fa-sync-alt"></i>
+                    </button>
+
+                    <div className="aspect-[3/4] w-full relative bg-gray-900 flex-shrink-0 virtual-box p-3 flex justify-center items-center">
+                        <img 
+                            src={imgSrc} 
+                            alt={game.title} 
+                            className="max-w-full max-h-full object-contain drop-shadow-[0_0_15px_rgba(0,0,0,0.5)] opacity-90 hover:opacity-100 transition-opacity" 
+                            onError={() => { 
+                                // Si l'image Wikipedia de la liste initiale meurt, on tente notre auto-jaquette magique.
+                                if (imgSrc !== autoCoverUrl) {
+                                    setImgSrc(autoCoverUrl);
+                                } else {
+                                    setImgSrc(''); // Si même l'auto-jaquette échoue, on masque l'image brisée.
+                                }
+                            }} 
+                            style={{ display: imgSrc ? 'block' : 'none' }}
+                        />
+                        {!imgSrc && (
+                            <div className="w-full h-full flex items-center justify-center font-pixel text-[8px] text-gray-500 text-center p-2">SANS IMAGE</div>
+                        )}
+                        <button 
+                            onClick={() => onDelete(game.id)}
+                            className="absolute bottom-2 right-2 z-20 text-red-500 opacity-70 hover:opacity-100 hover:text-red-400 focus:opacity-100 transition-opacity bg-black/80 hover:bg-black rounded-full w-7 h-7 flex items-center justify-center text-sm border border-red-900 hover:border-red-500"
+                            title="Supprimer ce jeu"
+                        >
+                            <i className="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div className="p-3 flex flex-col flex-grow justify-between">
+                        <div>
+                            <h3 className="font-pixel text-[10px] sm:text-xs mb-1 text-white truncate" title={game.title}>{game.title}</h3>
+                            <p className={`font-terminal text-base sm:text-lg mb-2 ${consoleColor}`}>{game.console}</p>
+                        </div>
+                        
+                        {/* Raccourcis Marché (Uniquement pour les jeux Recherchés) */}
+                        {!isOwned && (
+                            <div className="flex gap-2 mt-1 mb-3">
+                                <a 
+                                    href={`https://www.leboncoin.fr/recherche?text=${encodeURIComponent(game.title + ' ' + game.console)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 bg-[#ff6e14] hover:bg-[#e56312] text-white font-pixel text-[6px] sm:text-[7px] py-2 px-1 text-center rounded-sm transition-colors shadow-[0_0_5px_rgba(255,110,20,0.4)]"
+                                    title="Chercher sur Leboncoin"
+                                >
+                                    <i className="fas fa-shopping-bag mr-1"></i>LBC
+                                </a>
+                                <a 
+                                    href={`https://www.ebay.fr/sch/i.html?_nkw=${encodeURIComponent(game.title + ' ' + game.console + (game.region && game.region !== 'PAL' ? ' ' + game.region : ''))}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 bg-[#0064d2] hover:bg-[#0052ad] text-white font-pixel text-[6px] sm:text-[7px] py-2 px-1 text-center rounded-sm transition-colors shadow-[0_0_5px_rgba(0,100,210,0.4)]"
+                                    title="Chercher sur eBay"
+                                >
+                                    <i className="fab fa-ebay text-[9px] mr-1"></i>eBay
+                                </a>
+                            </div>
+                        )}
+
+                        <button 
+                            onClick={() => toggleStatus(game.id)}
+                            className={`w-full py-2 mt-auto font-pixel text-[8px] uppercase transition-colors ${isOwned ? 'bg-blue-900 hover:bg-blue-800 text-blue-200' : 'bg-pink-900 hover:bg-pink-800 text-pink-200'}`}
+                        >
+                            {isOwned ? 'Mettre en Recherchés' : 'Marquer Possédé'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
