@@ -1,153 +1,963 @@
-<!-- ... existing code ... -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RetroCollec Online</title>
+    
+    <!-- Bibliothèques externes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <script type="module">
+    <style>
+        :root {
+            --neon-pink: #ff007f;
+            --neon-blue: #00f0ff;
+            --neon-purple: #8a2be2;
+            --dark-bg: #050510;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: 'VT323', monospace;
+            overflow-x: hidden;
+            /* Retro synthwave grid background */
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center bottom;
+            background-attachment: fixed;
+        }
+
+        /* CRT Screen Effect Overlay */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 50;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .font-pixel { font-family: 'Press Start 2P', cursive; }
+        .font-terminal { font-family: 'VT323', monospace; }
+
+        .neon-text-pink { text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink); }
+        .neon-text-blue { text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue); }
+
+        .neon-border-pink {
+            border: 2px solid var(--neon-pink);
+            box-shadow: 0 0 10px var(--neon-pink), inset 0 0 10px rgba(255, 0, 127, 0.5);
+        }
+        .neon-border-blue {
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue), inset 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: var(--dark-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-pink); }
+
+        .game-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .game-card:hover { transform: translateY(-5px) scale(1.02); z-index: 10; }
+
+        .virtual-box {
+            background: linear-gradient(135deg, #2b1055 0%, #7597de 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .virtual-box::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: shine 6s infinite;
+        }
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 200%; }
+            100% { left: 200%; }
+        }
+
+        .custom-scrollbar-mini::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar-mini::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar-mini::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 2px; }
+    </style>
+</head>
+<body class="crt min-h-screen">
+    <div id="root"></div>
+    
+    <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : (localStorage.getItem('retroTracker_app_id') || 'retro-collection-tracker');
-
-        function initFirebaseSystem(config) {
-<!-- ... existing code ... -->
-                window.CloudSync = {
-                    appId,
-                    auth,
-                    db,
-                    doc,
-                    setDoc,
-                    getDoc,
-                    collection,
-                    onSnapshot,
-                    signInAnonymously,
-                    signInWithCustomToken,
-                    onAuthStateChanged,
-                    GoogleAuthProvider,
-                    signInWithPopup,
-                    signOut,
-                    isCustomConfig: typeof __firebase_config === 'undefined'
-                };
-
-                if (typeof window.onCloudSyncReady === 'function') {
-<!-- ... existing code ... -->
-        window.removeFirebaseConfig = function() {
-            localStorage.removeItem('retroTracker_firebase_config');
-            localStorage.removeItem('retroTracker_app_id');
-            delete window.CloudSync;
+        // Configuration Firebase (Issue de ta console)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCBHyJXxnUojeZus5cBQog5tDuInK6dSfU",
+            authDomain: "retrocollec-db.firebaseapp.com",
+            projectId: "retrocollec-db",
+            storageBucket: "retrocollec-db.firebasestorage.app",
+            messagingSenderId: "68562749391",
+            appId: "1:68562749391:web:06a28adaa346ccdde5b4ba"
         };
 
-        const embeddedConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const storedConfig = !embeddedConfig && localStorage.getItem('retroTracker_firebase_config') ? JSON.parse(localStorage.getItem('retroTracker_firebase_config')) : null;
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const APP_ID = "retrocollec-online-v1"; // Identifiant pour structurer la base de données
 
-        initFirebaseSystem(embeddedConfig || storedConfig);
-    </script>
+        const CONSOLES = ["Toutes", "Megadrive", "Super Famicom", "Master System"];
 
-    <style>
-<!-- ... existing code ... -->
+        const mdCompatibleRaw = [
+            "688 attack sub", "Addams family value", "Addams family", "After burner 2", "Aladdin",
+            "Alex kidd in the enchanted castle", "Alien 3", "Alien soldier", "Alisia dragoon",
+            "Altered beast", "Andre agassi tennis", "Aquatic games", "Arcade classics", "Arch rivals",
+            "Ariel the little mermaid", "Arrow flash", "Art alive", "Atomic runner", "Ball jacks",
+            "Ball z", "Batman forever", "Batman returns", "Batman", "Battle squadron", "Battletoads",
+            "Beavis and butthead", "Biohazard battle (Zoné jap, se lance en 60hz+us)", "Blade of vengeance",
+            "Blockout", "Bloodshot (Zoné sur jap uniquement)", "Bob", "Bonanza bros", "Bonkers",
+            "Brian lara cricket: (Bugué en 60 hz)", "Bubsy 2", "Bubsy", "Buck rogers", "Budokan",
+            "Bulls versus blazers and the nba playoff", "Burning force", "California games", "Cannon fodder",
+            "Captain america and the avenger", "Captain planet and the planeteers", "Centurion defender of rome",
+            "Chakan", "Champions world class soccer", "Chiki chiki boy", "Chuck rock 2", "Chuck rock",
+            "Cliffhanger", "Combat cars", "Corporation", "Cosmic spacehead", "Crackdown", "Crash dummies",
+            "Crue ball", "Cutthroat island", "Cyberball", "Cyborg justice", "Daffy duck in hollywood",
+            "Dark castle", "David robinson supreme courtdavis cup world tour", "Decap attack", "Demolition man",
+            "Desert demolition", "Desert strike", "Dick tracy", "Disney collection: castle of illusion+quackshot",
+            "Double clutch", "Double dragon 3", "Double dragon", "Dracula", "Dragon ball z",
+            "Dragon's fury (Zoné jap, se lance en 60hz+us)", "Dragon's revenge", "Dune 2:battle for arakis",
+            "Dungeons and dragons warrior of the eternal sun", "Dynamite duke", "Dynamite headdy", "Ea hockey",
+            "Earthworm jim", "Earthworm jim 2 (Zoné jap, se lance en 60 hz+us)", "Ecco the dolphin", "Eswat",
+            "European soccer", "Eternal champion", "Evander holyfield's boxing", "Ex mutants", "F 15 strike eagle 2",
+            "F1 world championship edition", "F1", "Faery tale adventure", "Fantasia", "Fantastic dizzy",
+            "Fatal fury", "Fatal labyrinth", "Fatal rewind", "Ferrari grand prix challenge", "Fever pitch soccer",
+            "Fifa 97 (Zoné jap, se lance en 60 hz+us)", "Fifa international soccer", "Fifa soccer 95",
+            "Fifa soccer 96", "Fire shark", "Flashback", "Flicky", "Flink", "Forgotten worlds", "G loc air battle",
+            "Gain ground", "Galaxy force 2", "Ggauntlet 4 (Zoné jap, se lance en 60 hz+us)",
+            "Geaorge foreman ko boxing", "General chaos", "Generations lost", "Ghostbusters", "Ghouls n ghost",
+            "Gods (Zoné jap, se lance en 60hz+us)", "Golden axe 2", "Golden axe", "Grandslam", "Green dog",
+            "Gunship", "Gynoug", "Hard drivin", "Haunting", "Havoc", "Hellfire", "Herzog zwei", "Home alone",
+            "Hook", "Hurricanes", "Img international tour", "Indiana jones and the last crusade", "International rugby",
+            "International superstar soccer deluxe", "Izzy's quest for the olympic rings", "Jack niklaus power challenge",
+            "James bond 007 the duel", "James buster douglas knockout boxing", "James pond 2", "James pond 3",
+            "James pond", "Jewel master", "Jimmy white's whirlwind snooker", "Joe montana 2 sport talk football",
+            "John madden american football", "John madden football 92", "Judge dredd", "Jungle strike",
+            "Jurassic park rampage edition", "Jurassic park the lost world", "Justice league task force",
+            "Kawasaki Superbike", "Kid Chameleon", "King of the monsters (Manette 6 boutons ne fonctionne pas)",
+            "Krusty's super funhouse", "Landstalker", "Light Crusader", "Livre de la Jungle", "M1 abraham battle tank",
+            "Madden nfl 96", "Man overboard", "Marble madness", "Mario lemieux hockey", "Marko's magi football",
+            "Mazin wars (Zoné us, se lance en 60hz+jap)", "Mega bomberman", "Menacer 6 games cartridge", "Mercs",
+            "Mickey Mouse & Donald Duck : World of Illusion", "Mickey mania", "Micro machines 2", "Micro machines 96",
+            "Micro machines military", "Micro machines", "Mig 29 fighter pilot", "Might and magic", "Mortal kombat 2",
+            "Mortal kombat", "Mr nutz", "Miss pacman", "Mystic defender", "Nba action 95", "Nba all star challenge",
+            "Nba jam te", "Nba jap", "Nba live 95", "Nba live 96", "Nba live 97",
+            "Nba shodown (Zoné jap, se lance en 60 hz+us)", "Newman haas indycar featuring nigle mansell",
+            "Nfl quaterback club", "Nhl 94", "Nhl 95", "Nhl 96", "Nhl 97", "Nhlpa hockey 93",
+            "Normy's beach babe o rama", "Olympic Game", "Outrun", "Pac mania", "Paperboy 2", "Paperboy",
+            "Pelé", "Pete sampras tennis", "Pga tour golf 3", "Pga tour golf", "Phantasy star 2", "Phantasy star 3",
+            "Phelios", "Pink goes to hollywood (Zoné jap, se lance en 60hz+us)", "Pit fighter", "Pitfall",
+            "Populous", "Power drive", "Power monger", "Predator 2", "Primal rage", "Psy pinball", "Puggsy",
+            "Quackshot", "Rambo 3", "Rbi 94 baseball", "Red zone", "Revenge of shinobi", "Revolution x",
+            "Rings of power", "Rie of the robot", "Risky woods", "Ristar", "Road rash", "Road rash 2",
+            "Road rash 3", "Robocop 3", "Rocket knight aventure", "Roi lion", "Rolling thunder 2", "Rolo to the rescue",
+            "Rugby world cup 95", "Sanpras tennis 96", "Seaquest dsv", "Second samurai", "Shadow dancer",
+            "Shadow of the beast 2", "Shadow of the beast", "Shaq fu", "Shining in the darkness", "Side pocket",
+            "Skitchin", "Snake rattle n roll", "Soleil", "Sonic 3D : Flickies' Island",
+            "Sonic Compilation (Certaines cartouches)", "Sonic & Knuckles", "Sonic The Hedgehog",
+            "Sonic The Hedgehog 2", "Space harrier 2", "Spiderman animated serie", "Spiderman venom maximum carnage",
+            "Spiderman venom: separation anxiety", "Spiderman x men", "Spiderman", "Splatterhouse 2",
+            "Spot goes to hollywood (Zoné jap, se lance en 60hz+us)", "Stargate", "Steel talons", "Streets fighter2'",
+            "Street racer", "Streets of Rage", "Streets of Rage 2 (Zoné us, se lance en 60hz+jap)", "Strider",
+            "Strider 2", "Summer challenge", "Super fantasy zone", "Super hang on", "Super hydlide", "Super kick off",
+            "Super monaco gp", "Super monaco gp 2 (Zoné us, se lance en 60hz+jap)", "Super off road",
+            "Super skidmark (Bugué en 60hz)", "Super smash tv", "Super Streets fighter 2", "Super thunder blade",
+            "Sword of sodan", "Sword of vermilion", "Syndicate", "T2 terminator 2 judgement day", "T2 the arcade game",
+            "Talespin", "Talmit's adventure", "Taz in escape from mars", "Taz mania", "Team usa basketball",
+            "Techno clash", "Test drive 2 the duel", "The flintstones", "The immortal", "The incredible hulk",
+            "The lawnmower man", "The simpsons bart nightmare", "The simpsons: bart vs the space mutants",
+            "The terminator", "Theme park", "Thunderforce 2", "Titi et grosminet", "Toejam and earl", "Toki",
+            "Toughman contest", "True lies", "Truxton", "Turbo outrun", "Turrican", "Twin hawk", "Universal Soldier",
+            "Urban Strike", "Vectorman", "Virtua Fighter 2", "Virtual Bbart", "Virtual Pinball",
+            "Vr Trooper (Zoné jap, se lance en 60 hz +us)", "Warlock", "Wayne gretzky"
+        ];
+
+        const mdIncompatibleRaw = [
+            "Aaaah Real Monsters", "Adventure of Mighty Max", "Aero the Acrobat", "Aero the Acrobat 2",
+            "Aladdin", "Alien Soldier", "Animaniacs", "Art of Fighting", "Asterix and the Great Rescue",
+            "Asterix et le Pouvoir des Dieux", "ATP Tour", "Back to the Future 3", "Batman & Robin",
+            "Bloodshot (Zoné Jap)", "Bodycount", "Boogerman", "Brutal Paws of Fury", "Bubba 'n Stix",
+            "Bubble and Squeak", "Bugs Bunny in Double Trouble",
+            "Castlevania (Ne boot pas, mais fonctionne si switché en cours de partie)", "Chaos Engine",
+            "Cheese Cat Astroph (Rame en 60hz)", "Clayfighter", "Comix Zone (Rame en 60hz)", "Compli Sega Sport 1",
+            "Cool Spot", "Dino Dini Soccer (Message d'erreur une fois le mode de jeu selectionné, demarre normalement)",
+            "Donald Maui Mallard (Rame en 60hz)", "Dr Robotnik", "Dragon the Bruce Lee Story (Bugué en 60hz)",
+            "Dune 2: Battle For Arakis", "Earthworm Jim", "Ecco: Les Marrées du Temps (Bugué en 60hz)",
+            "Eternal Champions", "Exo Squad", "Fifa 98", "Fun 'n Games", "Garfield", "Global Gladiator",
+            "Greatest Heavyweights (Bugs à l'écran en 60hz)", "Gunstar Heroes", "Hyperdunk",
+            "Jimmy White's Whirlwind Snooker", "Jurassic Park",
+            "Landstalker (Ne boot pas, mais fonctionne si switché en cours de partie)", "La légende de Thor",
+            "Lemmings 2: The Tribes", "Les Schtroumfs",
+            "Light Crusader (Ne boot pas, mais fonctionne si switché en cours de partie)", "Livre de la Jungle",
+            "Marsupilami", "Mc Donald Treasure Land Adventure", "Mega Lo Mania (Buggé en 60hz)", "Mega Swin",
+            "Mega Turrican", "Outrun 2019", "Pac Panic", "Pebble Beach Golf Link", "Phantasy Star 4",
+            "Phantom 2040", "Pinocchio", "Pocahontas", "Populous 2: Two Tribes", "Power Rangers: The Movie",
+            "Power Rangers (Légers Bugs en 60hz)", "Premier Manager 97", "Prince of Persia",
+            "Probotector (Ne boot pas, mais fonctionne si switché en cours de partie)", "Punisher", "Radical Rex",
+            "Ranger X", "Robocop VS. The Terminator", "Rock 'N Roll Racing", "Rocket Knight Adventures",
+            "Samurai Showdown (Bugué en 60hz)", "Saturday Night Slammasters", "Schtroumpfs Autour du Monde",
+            "Sensible Soccer European Champions", "Shining Force", "Shining Force 2", "Shinobi 3", "Skeleton Crew",
+            "Soleil", "Sonic 3 (Rame en 60hz)", "Sonic Compilation (Selon les cartouches)", "Sonic Spinball",
+            "Sparkster", "Speedball 2", "Spirou", "Star Trek: Deep Space Nine", "Street Fighter 2",
+            "Streets of Rage 3 (Bugué en 60hz)", "Sub Terrania", "Sunset Rider", "Super Street Fighter 2",
+            "Superman: The Man of Steel", "The Lost Vinkings", "The Ooze", "The Ottifants", "The Pagemaster",
+            "The Ren and Stimpy Show (Bugué en 60hz)", "Thunderforce 4 (Ralentissements en 60hz)", "Tintin au Tibet",
+            "Tiny Toons Acme All Stars", "Tiny Toons Adventure Buster Hidden Treasure",
+            "Toe Jam & Earl: Panic on Funkotron (Bugué en 60hz)", "Total Football", "Toy Story",
+            "Turtles Hyperstone Heist", "Turtles Tournament Fighter (Rame en 60hz)", "Ultimate Mortal Kombat 3",
+            "Ultimate Soccer", "Virtual Racing", "Wimbledon", "Worms", "X-men", "Xenon 2 Megablast",
+            "Zero the Kamikaze Squirrel", "Zombies", "Zool", "Zoop"
+        ];
+
+        const initialGames = [
+            { "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJdzp-wrZ3OFUDpg-_OiuD8mpssMsxiDwhYwAi0HbtGg&s=10", "region": "PAL", "status": "wanted", "id": 1791107397272, "console": "Megadrive", "title": "Mickael Jackson's Moonwalker" },
+            { "title": "Turtles in time", "id": 41, "status": "wanted", "region": "JAP", "description": "Les Tortues Ninja voyagent dans le temps. Le meilleur Beat'em up TMNT.", "console": "Super Famicom", "img": "https://m.media-amazon.com/images/M/MV5BZjdmNWQxMWQtZWYxYS00ODNhLTg2NGItNjVlNmZmZGU0ZGFjXkEyXkFqcGc@._V1_.jpg" },
+            { "title": "Golden Axe", "id": 1789247731648, "status": "wanted", "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvlQeHtJccrMTjDNhcuF-9plLtoI37t4xOV_vG2mqmcQ&s=10", "console": "Megadrive", "region": "PAL" },
+            { "id": 8, "region": "PAL", "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRDkxAWY1Pwr6i-T2YJSstBQ0EibDBRLIsTLitaGqKxFA&s=10", "title": "Sonic", "status": "owned", "description": "Le hérisson bleu hyper-rapide qui a révolutionné la console de Sega.", "console": "Megadrive" },
+            { "title": "Streets of rage 2", "status": "owned", "description": "Considéré comme l'un des meilleurs beat'em up de tous les temps. Gameplay parfait.", "region": "JAP", "id": 12, "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCqcOsVCImWl4qSYeGW2Our85L16VMN2-IIHT4ygPCpw&s=10", "console": "Megadrive" },
+            { "console": "Super Famicom", "status": "owned", "description": "Destruction d'amitiés certifiée à grands coups de carapaces rouges.", "title": "Super Mario Kart", "region": "JAP", "id": 34, "img": "https://upload.wikimedia.org/wikipedia/en/3/38/Supermariokart_box.JPG" },
+            { "img": "https://upload.wikimedia.org/wikipedia/en/2/21/The_Legend_of_Zelda_A_Link_to_the_Past_SNES_Game_Cover.jpg", "console": "Super Famicom", "title": "Zelda: ALTTP", "status": "owned", "description": "A Link to the Past. Un chef d'œuvre intemporel de l'aventure.", "id": 36, "region": "JAP" },
+            { "img": "https://upload.wikimedia.org/wikipedia/en/9/9d/Out_Run_European_Master_System_box_art.jpg", "console": "Master System", "title": "OutRun", "status": "wanted", "region": "PAL", "id": 50, "description": "Course arcade cheveux au vent dans une Ferrari Testarossa." }
+        ];
+
+        const getMatchInfo = (list, title) => {
+            const normInput = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (let item of list) {
+                const match = item.match(/(.*?)(?:\((.*)\))?$/);
+                const rawName = match[1].trim();
+                const note = match[2] ? match[2].trim() : null;
+                const normList = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                
+                if (normList === normInput || 
+                    (normList.length > 5 && normInput.includes(normList)) || 
+                    (normInput.length > 5 && normList.includes(normInput))) {
+                    return { found: true, note };
+                }
+            }
+            return { found: false };
+        };
+
+        const getMegadriveCompatibility = (title) => {
+            if (!title) return { status: 'unknown', note: null };
+            const incomp = getMatchInfo(mdIncompatibleRaw, title);
+            if (incomp.found) return { status: 'incompatible', note: incomp.note || 'Incompatible 60Hz' };
+            const comp = getMatchInfo(mdCompatibleRaw, title);
+            if (comp.found) return { status: 'compatible', note: comp.note || 'Compatible 60Hz' };
             return { status: 'unknown', note: null };
         };
 
-        const App = () => {
-            const [games, setGames] = React.useState(() => {
-                // Lecture du Lien Magique au démarrage
-                if (window.location.hash.startsWith('#data=')) {
-                    try {
-                        const hashData = window.location.hash.substring(6);
-                        const jsonString = decodeURIComponent(atob(hashData));
-                        const importedGames = JSON.parse(jsonString);
-                        if (Array.isArray(importedGames)) {
-                            // Nettoyer l'URL pour ne pas recharger à chaque actualisation (F5)
-                            window.history.replaceState(null, '', window.location.pathname + window.location.search);
-                            localStorage.setItem('retroTrackerData', JSON.stringify(importedGames));
-                            return importedGames;
-                        }
-                    } catch (e) {
-                        console.error("Erreur de lecture du lien magique", e);
-                    }
-                }
+        const CustomDialog = ({ isOpen, type, message, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+                    <div className="bg-gray-900 border-2 border-purple-500 p-6 rounded-lg max-w-sm w-full shadow-[0_0_30px_rgba(138,43,226,0.4)] text-center">
+                        <div className="text-4xl mb-4 text-pink-500">
+                            <i className={`fas ${type === 'confirm' ? 'fa-question-circle' : 'fa-exclamation-circle'}`}></i>
+                        </div>
+                        <p className="font-terminal text-xl text-white mb-6 whitespace-pre-wrap">{message}</p>
+                        <div className="flex justify-center gap-4">
+                            {type === 'confirm' && (
+                                <button onClick={onCancel} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-pixel text-[10px] py-2 px-4 rounded transition-colors">
+                                    Annuler
+                                </button>
+                            )}
+                            <button onClick={onConfirm} className={`flex-1 font-pixel text-[10px] py-2 px-4 rounded transition-colors ${type === 'confirm' ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
+        const App = () => {
+            // État des jeux
+            const [games, setGames] = React.useState(() => {
                 const savedGames = localStorage.getItem('retroTrackerData');
                 if (savedGames) {
-                    try {
-<!-- ... existing code ... -->
-                const { auth, signInWithCustomToken, signInAnonymously, db, doc, setDoc, onSnapshot, onAuthStateChanged, appId } = window.CloudSync;
+                    try { return JSON.parse(savedGames); } 
+                    catch (e) { return initialGames; }
+                }
+                return initialGames;
+            });
+
+            // États Firebase & Synchro
+            const [isCloudConnected, setIsCloudConnected] = React.useState(false);
+            const [userId, setUserId] = React.useState(null);
+            const [syncStatus, setSyncStatus] = React.useState('idle'); 
+            const [showAuthModal, setShowAuthModal] = React.useState(false);
+            const [authError, setAuthError] = React.useState(null);
+            
+            const [syncCode, setSyncCode] = React.useState(() => localStorage.getItem('retroTrackerSyncCode') || null);
+            const [inputSyncCode, setInputSyncCode] = React.useState("");
+            
+            const [copiedMessage, setCopiedMessage] = React.useState(null);
+            const [textCodeInput, setTextCodeInput] = React.useState("");
+
+            // État Boite de dialogue personnalisée
+            const [dialogState, setDialogState] = React.useState({ isOpen: false, type: 'alert', message: '', onConfirm: null, onCancel: null });
+
+            const showAlert = (message) => {
+                setDialogState({ isOpen: true, type: 'alert', message, onConfirm: () => setDialogState({ ...dialogState, isOpen: false }) });
+            };
+
+            const showConfirm = (message, onConfirmCallback) => {
+                setDialogState({
+                    isOpen: true, 
+                    type: 'confirm', 
+                    message, 
+                    onConfirm: () => {
+                        onConfirmCallback();
+                        setDialogState({ ...dialogState, isOpen: false });
+                    },
+                    onCancel: () => setDialogState({ ...dialogState, isOpen: false })
+                });
+            };
+
+            React.useEffect(() => {
+                try {
+                    const hash = window.location.hash;
+                    if (hash && hash.startsWith('#data=')) {
+                        const encodedData = hash.replace('#data=', '');
+                        const jsonString = decodeURIComponent(atob(encodedData));
+                        const importedGames = JSON.parse(jsonString);
+                        if (Array.isArray(importedGames) && importedGames.length > 0) {
+                            showConfirm(`Une collection de ${importedGames.length} jeux a été détectée dans ce lien !\n\nVoulez-vous l'importer et écraser la vôtre ?`, () => {
+                                setGames(importedGames);
+                                localStorage.setItem('retroTrackerData', JSON.stringify(importedGames));
+                                window.history.replaceState(null, null, ' ');
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erreur de décodage de l'URL:", e);
+                }
+            }, []);
+
+            React.useEffect(() => {
+                let unsubscribeDoc = null;
                 
-                unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+                const initCloud = async () => {
+                    try {
+                        await signInAnonymously(auth);
+                        setIsCloudConnected(true);
+                        setAuthError(null);
+                    } catch (err) {
+                        console.warn("Erreur auto-login anonyme:", err);
+                        setAuthError("Erreur d'authentification Firebase. Vérifiez la configuration.");
+                    }
+                };
+
+                initCloud();
+
+                const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
                     if (unsubscribeDoc) {
                         unsubscribeDoc();
                         unsubscribeDoc = null;
                     }
 
-                    if (!user) {
-                        try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await signInWithCustomToken(auth, __initial_auth_token);
+                    if (user) {
+                        setUserId(user.uid);
+                        // Choix du chemin selon si on utilise un code de partage (public) ou un profil personnel
+                        const docRef = syncCode 
+                            ? doc(db, 'artifacts', APP_ID, 'public', 'data', syncCode) 
+                            : doc(db, 'artifacts', APP_ID, 'users', user.uid, 'gamesCollection');
+
+                        unsubscribeDoc = onSnapshot(docRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                const cloudData = docSnap.data();
+                                if (cloudData && Array.isArray(cloudData.games)) {
+                                    setGames(cloudData.games);
+                                    localStorage.setItem('retroTrackerData', JSON.stringify(cloudData.games));
+                                    setSyncStatus('saved');
+                                    setTimeout(() => setSyncStatus('idle'), 2000);
+                                }
                             } else {
-                                await signInAnonymously(auth);
+                                // Première connexion ou nouveau code: On sauvegarde la collection locale actuelle sur le cloud
+                                const currentGames = JSON.parse(localStorage.getItem('retroTrackerData')) || games;
+                                setDoc(docRef, { games: currentGames, lastUpdated: Date.now() }).catch(err => {
+                                     console.error("Erreur d'écriture initiale:", err);
+                                     setAuthError("Erreur d'écriture Firebase. Vérifiez les règles Firestore.");
+                                });
                             }
-                            setAuthError(null);
-                        } catch (err) {
-                            console.warn("Erreur auto-login anonyme:", err);
-                            setAuthError(`Erreur Cloud : Sur votre console Firebase, activez l'Authentification "Anonyme". (${err.message})`);
-                        }
-                        return;
+                        }, (error) => {
+                            console.error("Erreur d'écoute Cloud:", error);
+                            setSyncStatus('error');
+                        });
                     }
+                });
 
-                    setAuthError(null);
-                    setUserId(user.uid);
-                    setUserEmail(user.email || null);
-<!-- ... existing code ... -->
-            const handleSaveCustomFirebase = (e) => {
+                return () => {
+                    if (unsubscribeDoc) unsubscribeDoc();
+                    if (unsubscribeAuth) unsubscribeAuth();
+                };
+            }, [syncCode]);
+
+            const saveGamesData = (updatedGames) => {
+                setGames(updatedGames);
+                localStorage.setItem('retroTrackerData', JSON.stringify(updatedGames));
+
+                if (userId || syncCode) {
+                    setSyncStatus('syncing');
+                    const docRef = syncCode
+                        ? doc(db, 'artifacts', APP_ID, 'public', 'data', syncCode)
+                        : doc(db, 'artifacts', APP_ID, 'users', userId, 'gamesCollection');
+
+                    setDoc(docRef, { games: updatedGames, lastUpdated: Date.now() })
+                        .then(() => {
+                            setSyncStatus('saved');
+                            setTimeout(() => setSyncStatus('idle'), 2000);
+                        })
+                        .catch((err) => {
+                            console.error("Erreur de sauvegarde Cloud:", err);
+                            setSyncStatus('error');
+                        });
+                }
+            };
+
+            const handleEnableSyncCode = (e) => {
                 e.preventDefault();
-                setFbConfigError(null);
+                const cleanCode = inputSyncCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!cleanCode) return;
+                localStorage.setItem('retroTrackerSyncCode', cleanCode);
+                setSyncCode(cleanCode);
+                setInputSyncCode("");
+                setShowAuthModal(false);
+            };
+
+            const handleDisableSyncCode = () => {
+                localStorage.removeItem('retroTrackerSyncCode');
+                setSyncCode(null);
+            };
+
+            const generateShareableLink = () => {
                 try {
-                    let cleanInput = customFbInput.trim();
-                    let parsed;
+                    const jsonString = JSON.stringify(games);
+                    const encodedData = btoa(encodeURIComponent(jsonString));
+                    const baseUrl = window.location.href.split('#')[0];
+                    const fullUrl = `${baseUrl}#data=${encodedData}`;
+                    
+                    const tempInput = document.createElement('input');
+                    tempInput.value = fullUrl;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
 
-                    if (cleanInput.startsWith('{')) {
-                        try {
-                            // Évaluation sécurisée pour mieux tolérer le format JS brut de Firebase
-                            parsed = new Function("return " + cleanInput)();
-                        } catch (err) {
-                            throw new Error("Format invalide. Assurez-vous d'avoir bien copié le bloc commençant par { et se terminant par }.");
-                        }
+                    setCopiedMessage("Lien magique copié dans le presse-papier !");
+                    setTimeout(() => setCopiedMessage(null), 4000);
+                } catch (err) {
+                    showAlert("Erreur lors de la génération du lien : La collection est peut-être très volumineuse.");
+                }
+            };
+
+            const generateTextCode = () => {
+                try {
+                    const jsonString = JSON.stringify(games);
+                    const encodedData = btoa(encodeURIComponent(jsonString));
+                    
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = encodedData;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+
+                    setCopiedMessage("Code Texte copié !");
+                    setTimeout(() => setCopiedMessage(null), 4000);
+                } catch (err) {
+                    showAlert("Erreur lors de la génération du code.");
+                }
+            };
+
+            const handleImportTextCode = (e) => {
+                e.preventDefault();
+                if (!textCodeInput.trim()) return;
+                try {
+                    const jsonString = decodeURIComponent(atob(textCodeInput.trim()));
+                    const importedGames = JSON.parse(jsonString);
+                    if (Array.isArray(importedGames)) {
+                        showConfirm(`Remplacer votre liste par ces ${importedGames.length} jeux ?`, () => {
+                            saveGamesData(importedGames);
+                            setTextCodeInput("");
+                            setShowAuthModal(false);
+                            showAlert("Collection importée avec succès !");
+                        });
                     } else {
-                        throw new Error("Le texte doit être un bloc de configuration entre accolades { ... }.");
+                        showAlert("Code invalide.");
                     }
+                } catch (err) {
+                    showAlert("Format de code invalide.");
+                }
+            };
 
-                    if (!parsed || !parsed.apiKey || !parsed.projectId) {
-                        throw new Error("Le bloc doit contenir au moins 'apiKey' et 'projectId'.");
+            const [activeConsole, setActiveConsole] = React.useState("Toutes");
+            const [searchQuery, setSearchQuery] = React.useState("");
+            const [showAddForm, setShowAddForm] = React.useState(false);
+            const [sortMode, setSortMode] = React.useState("alpha");
+            const [newTitle, setNewTitle] = React.useState("");
+            const [newConsole, setNewConsole] = React.useState("Megadrive");
+            const [newStatus, setNewStatus] = React.useState("wanted");
+            const [newImg, setNewImg] = React.useState("");
+            const [newRegion, setNewRegion] = React.useState("PAL");
+            const [editingId, setEditingId] = React.useState(null);
+
+             const toggleGameStatus = (id) => {
+                const targetGame = games.find(game => game.id === id);
+                if (!targetGame) return;
+                const updatedGame = { ...targetGame, status: targetGame.status === "owned" ? "wanted" : "owned" };
+                const otherGames = games.filter(game => game.id !== id);
+                saveGamesData([updatedGame, ...otherGames]);
+            };
+
+            const deleteGame = (id) => { saveGamesData(games.filter(game => game.id !== id)); };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!newTitle.trim()) return;
+                
+                let updatedList;
+                if (editingId) {
+                    updatedList = games.map(g => g.id === editingId ? {
+                        ...g, title: newTitle, console: newConsole, status: newStatus, region: newRegion, img: newImg
+                    } : g);
+                    setEditingId(null);
+                } else {
+                    const newGame = {
+                        id: Date.now(), title: newTitle, console: newConsole, status: newStatus, region: newRegion, img: newImg
+                    };
+                    updatedList = [newGame, ...games];
+                }
+                
+                saveGamesData(updatedList);
+                setNewTitle(""); setNewImg(""); setShowAddForm(false);
+            };
+
+            const handleEdit = (game) => {
+                setNewTitle(game.title); setNewConsole(game.console); setNewRegion(game.region);
+                setNewStatus(game.status); setNewImg(game.img || ""); setEditingId(game.id);
+                setShowAddForm(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            const handleToggleForm = () => {
+                if (showAddForm) { setEditingId(null); setNewTitle(""); setNewImg(""); }
+                setShowAddForm(!showAddForm);
+            };
+
+            const exportJSON = () => {
+                try {
+                    const dataStr = JSON.stringify(games, null, 2);
+                    const blob = new Blob([dataStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'sauvegarde_collection.json';
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    showAlert("Une erreur s'est produite lors de l'export.");
+                }
+            };
+
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    try {
+                        const data = JSON.parse(content);
+                        if (Array.isArray(data)) {
+                            showConfirm("Remplacer votre collection actuelle par le contenu de ce fichier ?", () => {
+                                saveGamesData(data);
+                            });
+                            return;
+                        }
+                    } catch (err) {
+                        // Tentative d'extraction depuis un export HTML
+                        const match = content.match(/const initialGames = (\[[\s\S]*?\]);\s*const CONSOLES/);
+                        if (match && match[1]) {
+                            try {
+                                const extractedGames = JSON.parse(match[1]);
+                                if (Array.isArray(extractedGames)) {
+                                    showConfirm("Importer la collection contenue dans ce fichier HTML ? Cela remplacera la vôtre.", () => {
+                                        saveGamesData(extractedGames);
+                                    });
+                                    return;
+                                }
+                            } catch (e2) {}
+                        }
+                        showAlert("Erreur : Impossible de lire les données. Fichier invalide.");
                     }
-<!-- ... existing code ... -->
-                                        <h4 className="font-pixel text-xs text-amber-300 mb-2 flex items-center gap-2">
-                                            <i className="fas fa-server text-yellow-400"></i>
-                                            <span>Configuration Firebase (Activer Code PIN sur GitHub)</span>
+                };
+                reader.readAsText(file);
+                e.target.value = null;
+            };
+
+            const filteredGames = games.filter(g => {
+                const matchesConsole = activeConsole === "Toutes" || g.console === activeConsole;
+                const matchesSearch = g.title.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesConsole && matchesSearch;
+            });
+
+            const sortedGames = [...filteredGames].sort((a, b) => {
+                if (sortMode === "alpha") return a.title.localeCompare(b.title);
+                return b.id - a.id;
+            });
+
+            const ownedGames = sortedGames.filter(g => g.status === "owned");
+            const wantedGames = sortedGames.filter(g => g.status === "wanted");
+
+            return (
+                <div className="container mx-auto px-4 py-6 max-w-7xl relative z-10 font-terminal">
+                    
+                    <CustomDialog {...dialogState} />
+
+                    <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-purple-900/50 pb-6">
+                        <div>
+                            <h1 className="font-pixel text-2xl sm:text-3xl md:text-4xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-400 to-cyan-400 font-bold mb-2">
+                                RETROCOLLEC ONLINE
+                            </h1>
+                            <p className="text-gray-400 text-lg sm:text-xl">Gestionnaire de Collection Retrogaming</p>
+                        </div>
+
+                        <div className="inline-flex flex-wrap items-center justify-center gap-3 bg-gray-900/90 border border-purple-500/50 px-4 py-2 rounded-2xl text-xs font-pixel shadow-lg">
+                            <div className="flex items-center gap-2">
+                                {isCloudConnected ? (
+                                    <>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
+                                        <span className="text-green-300">CLOUD OK</span>
+                                        {syncStatus === 'syncing' && <span className="text-yellow-400 text-[9px] ml-1">(Envoi...)</span>}
+                                        {syncStatus === 'saved' && <span className="text-blue-300 text-[9px] ml-1">(✓)</span>}
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                        <span className="text-yellow-300">LOCAL</span>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="h-4 w-px bg-purple-500/40 hidden sm:block"></div>
+
+                            <button 
+                                onClick={() => setShowAuthModal(true)}
+                                className="bg-pink-600/90 hover:bg-pink-500 text-white text-[9px] px-3 py-1 rounded-xl flex items-center gap-2 transition-colors"
+                            >
+                                <i className="fas fa-mobile-alt"></i>
+                                <span>{syncCode ? `Code Actif: ${syncCode.toUpperCase()}` : 'Partager / Synchro'}</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    {showAuthModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+                            <div className="bg-gray-900 border-2 border-pink-500 p-6 rounded-lg max-w-lg w-full shadow-[0_0_30px_rgba(236,72,153,0.4)] relative max-h-[90vh] overflow-y-auto custom-scrollbar-mini">
+                                <button onClick={() => setShowAuthModal(false)} className="absolute top-3 right-3 text-gray-400 hover:text-white text-xl">
+                                    <i className="fas fa-times"></i>
+                                </button>
+
+                                <div className="text-center mb-6">
+                                    <div className="w-12 h-12 rounded-full bg-pink-500/20 border border-pink-500 flex items-center justify-center mx-auto mb-3 text-pink-400 text-2xl">
+                                        <i className="fas fa-share-alt"></i>
+                                    </div>
+                                    <h3 className="font-pixel text-lg text-white mb-2">Accéder à ma collection partout</h3>
+                                    <p className="font-terminal text-xl text-gray-300">Choisissez la méthode la plus pratique :</p>
+                                </div>
+
+                                {copiedMessage && (
+                                    <div className="mb-6 p-3 bg-green-950/90 border border-green-500 rounded text-green-200 font-terminal text-lg text-center animate-bounce">
+                                        <i className="fas fa-check-circle mr-2 text-green-400"></i> {copiedMessage}
+                                    </div>
+                                )}
+
+                                {authError && (
+                                    <div className="mb-6 p-3 bg-red-950/90 border border-red-500 rounded text-red-200 font-terminal text-lg leading-snug">
+                                        <i className="fas fa-exclamation-triangle text-yellow-400 mr-2"></i> {authError}
+                                    </div>
+                                )}
+
+                                <div className="space-y-5">
+                                    <div className="bg-gray-800/90 border border-purple-500/60 p-4 rounded-lg">
+                                        <h4 className="font-pixel text-xs text-purple-300 mb-2 flex items-center gap-2">
+                                            <i className="fas fa-link text-yellow-400"></i> <span>Le Lien Magique (Instant)</span>
                                         </h4>
-                                        <p className="font-terminal text-lg text-amber-100 mb-3 leading-snug">
-                                            Collez ci-dessous le bloc Firebase copié depuis la console.
-                                            <br/><span className="text-pink-400 font-bold">⚠️ IMPORTANT : </span>Sur Firebase, vous devez obligatoirement activer <strong>l'authentification Anonyme</strong> et activer une base <strong>Firestore (Mode Test)</strong>.
+                                        <p className="font-terminal text-lg text-gray-300 mb-3">
+                                            Génère un lien direct. Ouvrez-le sur votre téléphone ou autre PC !
                                         </p>
-                                        
-                                        {fbConfigError && (
-<!-- ... existing code ... -->
-```
+                                        <button onClick={generateShareableLink} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded transition-colors uppercase shadow-md flex items-center justify-center gap-2">
+                                            <i className="fas fa-copy"></i> Générer le lien magique
+                                        </button>
+                                    </div>
 
-### 🛠️ Pour faire fonctionner la synchro "Code PIN" sur GitHub Pages :
+                                    <div className="bg-gray-800/90 border border-blue-500/60 p-4 rounded-lg">
+                                        <h4 className="font-pixel text-xs text-blue-300 mb-2 flex items-center gap-2">
+                                            <i className="fas fa-key text-yellow-400"></i> <span>Code PIN / Pseudo Cloud</span>
+                                        </h4>
+                                        <p className="font-terminal text-lg text-gray-300 mb-3">
+                                            Entrez le même code secret sur tous vos appareils pour tout synchroniser.
+                                        </p>
+                                        <form onSubmit={handleEnableSyncCode} className="space-y-2">
+                                            <input type="text" required placeholder="ex: retrogamer88" value={inputSyncCode} onChange={(e) => setInputSyncCode(e.target.value)} className="w-full bg-black border border-blue-500 text-white p-2 rounded font-terminal text-xl focus:outline-none focus:border-pink-500"/>
+                                            {syncCode ? (
+                                                <button type="button" onClick={handleDisableSyncCode} className="w-full bg-red-600 hover:bg-red-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded uppercase shadow-md flex items-center justify-center gap-2">
+                                                    <i className="fas fa-unlink"></i> Déconnecter ce code
+                                                </button>
+                                            ) : (
+                                                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[10px] py-2.5 px-4 rounded uppercase shadow-md">
+                                                    Activer la synchronisation
+                                                </button>
+                                            )}
+                                        </form>
+                                    </div>
 
-Puisque tu es sur un hébergement externe (GitHub), l'application a besoin que **ton propre projet Firebase** soit correctement configuré. Voici les 3 étapes vitales à vérifier dans ta console Firebase (`console.firebase.google.com`) :
+                                    <div className="bg-gray-800/90 border border-gray-700 p-4 rounded-lg">
+                                        <h4 className="font-pixel text-xs text-gray-300 mb-2 flex items-center gap-2">
+                                            <i className="fas fa-paste text-pink-400"></i> <span>Code Texte (Copier/Coller)</span>
+                                        </h4>
+                                        <div className="flex gap-2 mb-3">
+                                            <button onClick={generateTextCode} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-pixel text-[9px] py-2 px-3 rounded transition-colors">Copier le code</button>
+                                        </div>
+                                        <form onSubmit={handleImportTextCode} className="space-y-2">
+                                            <input type="text" placeholder="Collez le code texte ici..." value={textCodeInput} onChange={(e) => setTextCodeInput(e.target.value)} className="w-full bg-black border border-gray-600 text-white p-2 rounded font-terminal text-lg focus:outline-none focus:border-pink-500"/>
+                                            <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 text-white font-pixel text-[9px] py-2 px-3 rounded uppercase">Importer</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-1. **Authentication :** Va dans "Authentication" > Onglet "Sign-in method", puis **active le fournisseur "Anonyme"**. Sans cela, l'application bloque.
-2. **Firestore Database :** Va dans "Firestore Database" et clique sur "Créer une base de données".
-3. **Règles de sécurité :** Démarre en **Mode Test** (cela autorise la lecture/écriture pendant 30 jours) ou modifie les règles existantes pour :
-   ```javascript
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /{document=**} {
-         allow read, write: if true;
-       }
-     }
-   }
-   ```
+                    <div className="mb-8 space-y-6">
+                        <div className="flex flex-wrap justify-center gap-2 mb-6">
+                            {CONSOLES.map(c => (
+                                <button key={c} onClick={() => setActiveConsole(c)} className={`font-pixel text-[10px] sm:text-xs py-2 px-4 uppercase transition-all ${activeConsole === c ? 'bg-purple-600 text-white neon-border-blue' : 'bg-gray-800 text-gray-400 border border-gray-600 hover:bg-gray-700'}`}>
+                                    {c}
+                                </button>
+                            ))}
+                        </div>
 
-*(💡 **Astuce :** Même sans Firebase, grâce aux correctifs ci-dessus, tu peux désormais utiliser le bouton **"Lien Magique"** ! Si tu le génères depuis ton PC et que tu l'ouvres sur ton téléphone, ta collection se chargera instantanément. C'est une excellente alternative !)*
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="relative w-full md:flex-1">
+                                <i className="fas fa-search absolute left-3 top-3 text-blue-400"></i>
+                                <input type="text" placeholder="Rechercher un jeu..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-900 border-2 border-blue-500 text-blue-300 rounded-none py-2 pl-10 pr-4 font-terminal text-xl focus:outline-none focus:border-pink-500 transition-colors"/>
+                            </div>
+
+                            <div className="relative w-full md:w-48">
+                                <i className="fas fa-sort absolute left-3 top-3 text-pink-400"></i>
+                                <select value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="w-full bg-gray-900 border-2 border-pink-500 text-pink-300 rounded-none py-2 pl-10 pr-4 font-terminal text-xl focus:outline-none focus:border-blue-500 transition-colors appearance-none cursor-pointer">
+                                    <option value="ajout">Tri : Ajout</option>
+                                    <option value="alpha">Tri : A - Z</option>
+                                </select>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto flex-wrap justify-end">
+                                <button onClick={handleToggleForm} className="w-full sm:w-auto bg-pink-600 hover:bg-pink-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-pink uppercase transition-all whitespace-nowrap">
+                                    <i className={`fas ${showAddForm ? 'fa-times' : (editingId ? 'fa-edit' : 'fa-plus')} mr-1`}></i> {showAddForm ? 'Fermer' : (editingId ? 'Modifier' : 'Ajouter')}
+                                </button>
+                                
+                                <button onClick={exportJSON} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-blue uppercase transition-all whitespace-nowrap">
+                                    <i className="fas fa-file-export mr-1"></i> Sauvegarder
+                                </button>
+
+                                <input type="file" id="importFile" accept=".json,.txt,.html" style={{display: 'none'}} onChange={handleImport} />
+                                <button onClick={() => document.getElementById('importFile').click()} className="w-full sm:w-auto bg-green-600 hover:bg-green-500 text-white font-pixel text-[9px] sm:text-[10px] py-3 px-3 neon-border-blue uppercase transition-all whitespace-nowrap">
+                                    <i className="fas fa-file-import mr-1"></i> Importer
+                                </button>
+                            </div>
+                        </div>
+
+                        {showAddForm && (
+                            <form onSubmit={handleSubmit} className="bg-gray-900 border-2 border-purple-500 p-6 shadow-[0_0_15px_#8a2be2] mb-8 animate-[fadeIn_0.3s_ease-out]">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                                    <div className="lg:col-span-2 relative">
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Titre du jeu</label>
+                                        <input required type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:border-pink-500 focus:outline-none"/>
+                                        {newConsole === "Megadrive" && newTitle && (
+                                            <div className="absolute top-[102%] left-0 text-[10px] font-pixel z-10 p-1 bg-black border border-gray-700 rounded w-full">
+                                                {(() => {
+                                                    const info = getMegadriveCompatibility(newTitle);
+                                                    if (info.status === 'compatible') return <span className="text-green-400">✓ {info.note}</span>;
+                                                    if (info.status === 'incompatible') return <span className="text-red-400">⚠ {info.note}</span>;
+                                                    return <span className="text-gray-500">Statut 60Hz inconnu</span>;
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Console</label>
+                                        <select value={newConsole} onChange={(e) => setNewConsole(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
+                                            <option>Megadrive</option><option>Super Famicom</option><option>Master System</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Région</label>
+                                        <select value={newRegion} onChange={(e) => setNewRegion(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
+                                            <option value="PAL">PAL</option><option value="US">US</option><option value="JAP">JAP</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">Statut</label>
+                                        <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
+                                            <option value="wanted">Recherchés</option><option value="owned">Possédé</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 text-white font-pixel text-[10px] py-3 px-4 neon-border-blue h-[46px]">
+                                            {editingId ? 'MODIFIER' : 'AJOUTER'}
+                                        </button>
+                                    </div>
+                                    <div className="lg:col-span-6">
+                                        <label className="block font-terminal text-pink-400 text-xl mb-1">URL Image (Optionnel)</label>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            <input type="text" value={newImg} onChange={(e) => setNewImg(e.target.value)} className="flex-1 bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:border-pink-500 focus:outline-none" placeholder="Laissez vide pour une recherche automatique..."/>
+                                            {newTitle && (
+                                                <a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(newTitle + ' ' + newConsole + ' ' + newRegion + ' cover box art')}`} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-pixel text-[10px] py-2 px-4 flex items-center justify-center neon-border-blue transition-colors uppercase whitespace-nowrap">
+                                                    <i className="fas fa-search mr-2"></i> Chercher
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
+            
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-[#0a0a1a] border border-blue-900 rounded-xl p-4 md:p-6 shadow-[inset_0_0_50px_rgba(0,240,255,0.05)] h-full">
+                                <h2 className="font-pixel text-xl md:text-2xl mb-6 text-center neon-text-blue border-b-2 border-blue-900 pb-4">
+                                    <i className="fas fa-star text-yellow-400 mr-3"></i> MA COLLECTION ({ownedGames.length})
+                                </h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {ownedGames.map(game => <GameCard key={game.id} game={game} toggleStatus={toggleGameStatus} onDelete={deleteGame} onEdit={handleEdit} />)}
+                                    {ownedGames.length === 0 && <p className="col-span-full text-center font-terminal text-xl text-gray-500 mt-10">Aucun jeu possédé ici...</p>}
+                                </div>
+                            </div>
+
+                            <div className="bg-[#1a0a10] border border-pink-900 rounded-xl p-4 md:p-6 shadow-[inset_0_0_50px_rgba(255,0,127,0.05)] h-full">
+                                <h2 className="font-pixel text-xl md:text-2xl mb-6 text-center neon-text-pink border-b-2 border-pink-900 pb-4">
+                                    <i className="fas fa-crosshairs text-red-500 mr-3"></i> RECHERCHÉS ({wantedGames.length})
+                                </h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    {wantedGames.map(game => <GameCard key={game.id} game={game} toggleStatus={toggleGameStatus} onDelete={deleteGame} onEdit={handleEdit} />)}
+                                    {wantedGames.length === 0 && <p className="col-span-full text-center font-terminal text-xl text-gray-500 mt-10">Liste de recherche vide !</p>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const GameCard = ({ game, toggleStatus, onDelete, onEdit }) => {
+            const isOwned = game.status === "owned";
+            let consoleColor = "text-gray-400";
+            if (game.console === "Megadrive") consoleColor = "text-red-500";
+            if (game.console === "Super Famicom") consoleColor = "text-yellow-400";
+            if (game.console === "Master System") consoleColor = "text-blue-400";
+
+            const getRegionColorClass = (region) => {
+                if (region === 'PAL') return 'bg-blue-900 text-blue-300 border border-blue-500';
+                if (region === 'US') return 'bg-purple-900 text-purple-300 border border-purple-500';
+                if (region === 'JAP') return 'bg-red-900 text-red-300 border border-red-500';
+                return 'bg-gray-800 text-gray-300 border border-gray-500';
+            };
+
+            const autoCoverUrl = `https://tse2.mm.bing.net/th?q=${encodeURIComponent(game.title + ' ' + game.console + ' game box art cover')}`;
+            const [imgSrc, setImgSrc] = React.useState(game.img || autoCoverUrl);
+
+            React.useEffect(() => { setImgSrc(game.img || autoCoverUrl); }, [game.img, autoCoverUrl]);
+
+            return (
+                <div className={`game-card relative bg-black flex flex-col h-full rounded-md overflow-hidden ${isOwned ? 'border border-blue-700 hover:border-blue-400' : 'border border-pink-700 hover:border-pink-400'}`}>
+                    <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start">
+                        {game.region && <div className={`px-2 py-1 font-pixel text-[8px] rounded ${getRegionColorClass(game.region)}`}>{game.region}</div>}
+                        {(() => {
+                            if (game.console === "Megadrive") {
+                                const compInfo = getMegadriveCompatibility(game.title);
+                                if (compInfo.status !== 'unknown') {
+                                    const isComp = compInfo.status === 'compatible';
+                                    return (
+                                        <div className={`px-2 py-1 font-pixel text-[8px] rounded cursor-help flex flex-col items-start shadow-md ${isComp ? 'bg-green-900 text-green-300 border border-green-500' : 'bg-orange-900 text-orange-300 border border-orange-500'}`} title={compInfo.note}>
+                                            <span>{isComp ? '60Hz OK' : '60Hz BUG'}</span>
+                                            {compInfo.note && compInfo.note !== 'Compatible 60Hz' && compInfo.note !== 'Incompatible 60Hz' && (
+                                                <span className="text-[6px] opacity-80 mt-1 max-w-[100px] truncate">{compInfo.note}</span>
+                                            )}
+                                        </div>
+                                    );
+                                }
+                            }
+                            return null;
+                        })()}
+                    </div>
+
+                    <button onClick={() => onEdit(game)} className="absolute top-2 right-2 z-20 text-blue-400 opacity-70 hover:opacity-100 hover:text-blue-300 focus:opacity-100 transition-opacity bg-black/80 hover:bg-black rounded-full w-7 h-7 flex items-center justify-center text-sm border border-blue-900 hover:border-blue-500" title="Actualiser/Modifier ce jeu">
+                        <i className="fas fa-sync-alt"></i>
+                    </button>
+
+                    <div className="aspect-[3/4] w-full relative bg-gray-900 flex-shrink-0 virtual-box p-3 flex justify-center items-center">
+                        <img 
+                            src={imgSrc} alt={game.title} 
+                            className="max-w-full max-h-full object-contain drop-shadow-[0_0_15px_rgba(0,0,0,0.5)] opacity-90 hover:opacity-100 transition-opacity" 
+                            onError={() => { if (imgSrc !== autoCoverUrl) { setImgSrc(autoCoverUrl); } else { setImgSrc(''); } }} 
+                            style={{ display: imgSrc ? 'block' : 'none' }}
+                        />
+                        {!imgSrc && <div className="w-full h-full flex items-center justify-center font-pixel text-[8px] text-gray-500 text-center p-2">SANS IMAGE</div>}
+                        <button onClick={() => onDelete(game.id)} className="absolute bottom-2 right-2 z-20 text-red-500 opacity-70 hover:opacity-100 hover:text-red-400 focus:opacity-100 transition-opacity bg-black/80 hover:bg-black rounded-full w-7 h-7 flex items-center justify-center text-sm border border-red-900 hover:border-red-500" title="Supprimer ce jeu">
+                            <i className="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div className="p-3 flex flex-col flex-grow justify-between">
+                        <div>
+                            <h3 className="font-pixel text-[10px] sm:text-xs mb-1 text-white truncate" title={game.title}>{game.title}</h3>
+                            <p className={`font-terminal text-base sm:text-lg mb-2 ${consoleColor}`}>{game.console}</p>
+                        </div>
+                        
+                        {!isOwned && (
+                            <div className="flex gap-2 mt-1 mb-3">
+                                <a href={`https://www.leboncoin.fr/recherche?text=${encodeURIComponent(game.title + ' ' + game.console)}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#ff6e14] hover:bg-[#e56312] text-white font-pixel text-[6px] sm:text-[7px] py-2 px-1 text-center rounded-sm transition-colors shadow-[0_0_5px_rgba(255,110,20,0.4)]" title="Chercher sur Leboncoin">
+                                    <i className="fas fa-shopping-bag mr-1"></i>LBC
+                                </a>
+                                <a href={`https://www.ebay.fr/sch/i.html?_nkw=${encodeURIComponent(game.title + ' ' + game.console + (game.region && game.region !== 'PAL' ? ' ' + game.region : ''))}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#0064d2] hover:bg-[#0052ad] text-white font-pixel text-[6px] sm:text-[7px] py-2 px-1 text-center rounded-sm transition-colors shadow-[0_0_5px_rgba(0,100,210,0.4)]" title="Chercher sur eBay">
+                                    <i className="fab fa-ebay text-[9px] mr-1"></i>eBay
+                                </a>
+                            </div>
+                        )}
+
+                        <button onClick={() => toggleStatus(game.id)} className={`w-full py-2 mt-auto font-pixel text-[8px] uppercase transition-colors ${isOwned ? 'bg-blue-900 hover:bg-blue-800 text-blue-200' : 'bg-pink-900 hover:bg-pink-800 text-pink-200'}`}>
+                            {isOwned ? 'Mettre en Recherchés' : 'Marquer Possédé'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
