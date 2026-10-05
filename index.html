@@ -118,7 +118,7 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider(); 
 
-        const CONSOLES = ["Toutes", "Megadrive", "Super Famicom", "Master System"];
+        const CONSOLES = ["Toutes", "Megadrive", "Super Famicom", "Master System", "Neo Geo", "NES"];
 
         const mdCompatibleRaw = [
             "688 attack sub", "Addams family value", "Addams family", "After burner 2", "Aladdin",
@@ -638,7 +638,7 @@
                                     <div>
                                         <label className="block font-terminal text-pink-400 text-xl mb-1">Console</label>
                                         <select value={newConsole} onChange={(e) => setNewConsole(e.target.value)} className="w-full bg-black border border-purple-500 text-white p-2 font-terminal text-xl focus:outline-none">
-                                            <option>Megadrive</option><option>Super Famicom</option><option>Master System</option>
+                                            <option>Megadrive</option><option>Super Famicom</option><option>Master System</option><option>Neo Geo</option><option>NES</option>
                                         </select>
                                     </div>
                                     <div>
@@ -706,6 +706,8 @@
             if (game.console === "Megadrive") consoleColor = "text-red-500";
             if (game.console === "Super Famicom") consoleColor = "text-yellow-400";
             if (game.console === "Master System") consoleColor = "text-blue-400";
+            if (game.console === "Neo Geo") consoleColor = "text-green-400";
+            if (game.console === "NES") consoleColor = "text-gray-200";
 
             const getRegionColorClass = (region) => {
                 if (region === 'PAL') return 'bg-blue-900 text-blue-300 border border-blue-500';
